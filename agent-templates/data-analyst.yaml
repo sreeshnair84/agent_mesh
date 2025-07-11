@@ -1,0 +1,192 @@
+name: "Data Analysis Agent"
+version: "1.0.0"
+description: "Specialized agent for data analysis, visualization, and reporting tasks"
+category: "data_science"
+tags: ["data", "analysis", "visualization", "statistics", "reporting"]
+
+capabilities:
+  - "data_analysis"
+  - "statistical_analysis"
+  - "data_visualization"
+  - "report_generation"
+  - "sql_query_generation"
+  - "python_code_execution"
+
+tools:
+  - "pandas_processor"
+  - "numpy_calculator"
+  - "matplotlib_visualizer"
+  - "seaborn_plotter"
+  - "sql_executor"
+  - "excel_processor"
+  - "csv_reader"
+  - "database_connector"
+
+system_prompt: |
+  You are a data analysis specialist designed to help users analyze, visualize, and understand data.
+  
+  Your primary responsibilities:
+  - Analyze datasets and identify patterns, trends, and insights
+  - Create clear and informative visualizations
+  - Generate comprehensive reports and summaries
+  - Write and execute SQL queries for data extraction
+  - Perform statistical analysis and hypothesis testing
+  - Clean and preprocess data for analysis
+  - Recommend appropriate analytical approaches
+  
+  Guidelines:
+  - Always validate data quality before analysis
+  - Use appropriate statistical methods for the data type
+  - Create visualizations that clearly communicate insights
+  - Provide context and interpretation for all results
+  - Document assumptions and limitations
+  - Follow data privacy and security best practices
+  - Suggest actionable recommendations based on findings
+
+default_config:
+  max_tokens: 3000
+  temperature: 0.3
+  top_p: 0.8
+  frequency_penalty: 0.1
+  presence_penalty: 0.0
+  response_format: "text"
+  memory_enabled: true
+  memory_window: 15
+  context_window: 6000
+  code_execution_enabled: true
+  
+model_preferences:
+  - "gpt-4o"
+  - "gpt-4o-mini"
+  - "claude-3-sonnet"
+
+rate_limits:
+  requests_per_minute: 30
+  tokens_per_minute: 15000
+  concurrent_requests: 3
+  analysis_timeout: 300
+
+schema:
+  type: object
+  properties:
+    data_sources:
+      type: array
+      items:
+        type: string
+      description: "Supported data sources (csv, excel, sql, api, etc.)"
+      default: ["csv", "excel", "json", "sql"]
+    
+    analysis_types:
+      type: array
+      items:
+        type: string
+      description: "Types of analysis to perform"
+      default: ["descriptive", "exploratory", "statistical"]
+    
+    visualization_preferences:
+      type: object
+      properties:
+        chart_library:
+          type: string
+          enum: ["matplotlib", "seaborn", "plotly", "bokeh"]
+          default: "seaborn"
+        style:
+          type: string
+          enum: ["minimal", "corporate", "academic", "colorful"]
+          default: "minimal"
+        export_format:
+          type: string
+          enum: ["png", "svg", "pdf", "html"]
+          default: "png"
+    
+    reporting_format:
+      type: string
+      enum: ["executive_summary", "detailed_report", "technical_analysis"]
+      description: "Format for generated reports"
+      default: "detailed_report"
+    
+    statistical_confidence:
+      type: number
+      minimum: 0.8
+      maximum: 0.99
+      description: "Statistical confidence level for tests"
+      default: 0.95
+    
+    data_privacy_level:
+      type: string
+      enum: ["public", "internal", "confidential", "restricted"]
+      description: "Data privacy classification"
+      default: "internal"
+    
+    auto_cleaning:
+      type: boolean
+      description: "Automatically clean and preprocess data"
+      default: true
+    
+    output_languages:
+      type: array
+      items:
+        type: string
+      description: "Languages for report generation"
+      default: ["python", "sql", "markdown"]
+
+deployment:
+  scaling:
+    min_instances: 1
+    max_instances: 5
+    auto_scale: true
+    cpu_threshold: 80
+    memory_threshold: 85
+  
+  resources:
+    cpu: "500m"
+    memory: "1Gi"
+    storage: "5Gi"
+    
+  environment:
+    - name: "JUPYTER_ENABLE_LAB"
+      value: "yes"
+    - name: "PYTHON_PACKAGES"
+      value: "pandas,numpy,matplotlib,seaborn,scipy,scikit-learn"
+    
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 60
+    timeout: 10
+    
+monitoring:
+  metrics:
+    - "analysis_count"
+    - "processing_time"
+    - "data_volume_processed"
+    - "error_rate"
+    - "memory_usage"
+    - "cpu_usage"
+  
+  alerts:
+    - condition: "memory_usage > 0.9"
+      severity: "warning"
+    - condition: "processing_time > 300"
+      severity: "warning"
+    - condition: "error_rate > 0.1"
+      severity: "critical"
+    - condition: "data_volume_processed > 1000000"
+      severity: "info"
+
+security:
+  data_access:
+    - "read_csv"
+    - "read_excel"
+    - "read_sql"
+    - "read_api"
+  
+  restrictions:
+    - "no_external_data_export"
+    - "log_all_data_access"
+    - "encrypt_temp_files"
+    
+  compliance:
+    - "GDPR"
+    - "HIPAA"
+    - "SOX"

@@ -1,0 +1,27 @@
+# Python Dockerignore for backend
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+venv/
+ENV/
+.env
+.env.*
+.dockerignore
+.git
+.gitignore
+*.log
+logs/
+*.sqlite3
+*.db
+*.bak
+*.sql
+uploads/
+*.egg-info/
+build/
+dist/
+.DS_Store
+Thumbs.db

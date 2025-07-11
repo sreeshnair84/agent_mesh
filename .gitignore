@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env.*
+venv/
+ENV/
+.envrc
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite3
+*.db
+*.bak
+*.sql
+
+# Environment
+.env
+.env.*
+
+# Node
+node_modules/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Docker
+*.pid
+*.pid.lock
+
+# Uploads
+uploads/
+
+# Misc
+*.swp
+*.swo
+
+# Ignore backups
+*.bak
+
+# Ignore database backups
+database/backups/
+
+# Ignore compiled files
+*.so
+
+# Ignore coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Ignore test output
+test-results/
+
+# Ignore frontend build artifacts
+frontend/.next/
+frontend/out/
+
+# Ignore pipeline artifacts
+pipeline/__pycache__/
+
+# Ignore agent-templates artifacts
+agent-templates/*.pyc
+
+# Ignore tool-templates artifacts
+tool-templates/*.pyc

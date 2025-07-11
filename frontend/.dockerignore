@@ -1,0 +1,17 @@
+# Node/Next.js Dockerignore for frontend
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env.*
+.dockerignore
+.git
+.gitignore
+*.log
+logs/
+.DS_Store
+Thumbs.db
+coverage/
+*.tsbuildinfo

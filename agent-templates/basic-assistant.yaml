@@ -1,0 +1,131 @@
+name: "Basic Assistant Agent"
+version: "1.0.0"
+description: "A general-purpose assistant agent with basic conversational capabilities"
+category: "assistant"
+tags: ["assistant", "general", "conversation", "support"]
+
+capabilities:
+  - "text_generation"
+  - "conversation"
+  - "question_answering"
+  - "task_assistance"
+
+tools:
+  - "text_processor"
+  - "web_search"
+  - "knowledge_base"
+
+system_prompt: |
+  You are a helpful assistant agent designed to assist users with various tasks and questions.
+  
+  Your primary responsibilities:
+  - Answer questions accurately and helpfully
+  - Provide clear explanations and step-by-step guidance
+  - Maintain a friendly and professional tone
+  - Ask clarifying questions when needed
+  - Escalate complex issues to human agents when appropriate
+  
+  Guidelines:
+  - Be concise but thorough in your responses
+  - Provide sources when making factual claims
+  - Admit when you don't know something
+  - Respect user privacy and confidentiality
+  - Follow ethical guidelines in all interactions
+
+default_config:
+  max_tokens: 2000
+  temperature: 0.7
+  top_p: 0.9
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  response_format: "text"
+  memory_enabled: true
+  memory_window: 10
+  context_window: 4000
+  
+model_preferences:
+  - "gpt-4o-mini"
+  - "gpt-3.5-turbo"
+  - "claude-3-haiku"
+
+rate_limits:
+  requests_per_minute: 60
+  tokens_per_minute: 10000
+  concurrent_requests: 5
+
+schema:
+  type: object
+  properties:
+    greeting_message:
+      type: string
+      description: "Custom greeting message for the agent"
+      default: "Hello! I'm your assistant. How can I help you today?"
+    
+    personality:
+      type: string
+      enum: ["professional", "friendly", "casual", "formal"]
+      description: "Agent personality style"
+      default: "friendly"
+    
+    domain_expertise:
+      type: array
+      items:
+        type: string
+      description: "Specific domains or topics the agent should specialize in"
+      default: []
+    
+    escalation_threshold:
+      type: number
+      minimum: 0
+      maximum: 1
+      description: "Confidence threshold below which to escalate to human"
+      default: 0.7
+    
+    response_length:
+      type: string
+      enum: ["brief", "moderate", "detailed"]
+      description: "Preferred response length"
+      default: "moderate"
+    
+    language:
+      type: string
+      description: "Primary language for responses"
+      default: "en"
+    
+    custom_instructions:
+      type: string
+      description: "Additional custom instructions for the agent"
+      default: ""
+
+deployment:
+  scaling:
+    min_instances: 1
+    max_instances: 10
+    auto_scale: true
+    cpu_threshold: 70
+    memory_threshold: 80
+  
+  resources:
+    cpu: "100m"
+    memory: "256Mi"
+    
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 30
+    timeout: 5
+    
+monitoring:
+  metrics:
+    - "request_count"
+    - "response_time"
+    - "error_rate"
+    - "user_satisfaction"
+  
+  alerts:
+    - condition: "error_rate > 0.05"
+      severity: "warning"
+    - condition: "response_time > 5000"
+      severity: "warning"
+    - condition: "error_rate > 0.1"
+      severity: "critical"

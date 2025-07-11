@@ -1,0 +1,291 @@
+name: "Web Search Tool"
+version: "1.0.0"
+description: "Tool for searching the web and retrieving information from search engines"
+type: "external_service"
+category: "search"
+tags: ["web", "search", "information", "research"]
+
+schema:
+  input_schema:
+    type: object
+    properties:
+      query:
+        type: string
+        description: "Search query"
+        minLength: 1
+        maxLength: 500
+      
+      num_results:
+        type: integer
+        description: "Number of results to return"
+        minimum: 1
+        maximum: 20
+        default: 10
+      
+      search_type:
+        type: string
+        enum: ["web", "images", "news", "videos"]
+        description: "Type of search to perform"
+        default: "web"
+      
+      language:
+        type: string
+        description: "Language for search results"
+        default: "en"
+      
+      region:
+        type: string
+        description: "Geographic region for search"
+        default: "US"
+      
+      safe_search:
+        type: string
+        enum: ["off", "moderate", "strict"]
+        description: "Safe search setting"
+        default: "moderate"
+      
+      time_range:
+        type: string
+        enum: ["any", "day", "week", "month", "year"]
+        description: "Time range for search results"
+        default: "any"
+    
+    required: ["query"]
+  
+  output_schema:
+    type: object
+    properties:
+      results:
+        type: array
+        items:
+          type: object
+          properties:
+            title:
+              type: string
+              description: "Title of the result"
+            
+            url:
+              type: string
+              description: "URL of the result"
+            
+            snippet:
+              type: string
+              description: "Text snippet from the result"
+            
+            domain:
+              type: string
+              description: "Domain of the result"
+            
+            published_date:
+              type: string
+              description: "Publication date (if available)"
+            
+            relevance_score:
+              type: number
+              description: "Relevance score (0-1)"
+      
+      search_metadata:
+        type: object
+        properties:
+          query:
+            type: string
+            description: "Original search query"
+          
+          total_results:
+            type: integer
+            description: "Total number of results found"
+          
+          search_time:
+            type: number
+            description: "Time taken for search in seconds"
+          
+          search_engine:
+            type: string
+            description: "Search engine used"
+
+implementation:
+  type: "http_api"
+  config:
+    base_url: "https://api.search-engine.com/v1"
+    endpoint: "/search"
+    method: "GET"
+    timeout: 30
+    retry_count: 3
+    retry_delay: 1
+    
+    headers:
+      User-Agent: "AgentMesh-WebSearch/1.0"
+      Accept: "application/json"
+    
+    parameter_mapping:
+      query: "q"
+      num_results: "num"
+      search_type: "tbm"
+      language: "hl"
+      region: "gl"
+      safe_search: "safe"
+      time_range: "tbs"
+    
+    response_mapping:
+      results: "$.items[*]"
+      title: "$.title"
+      url: "$.link"
+      snippet: "$.snippet"
+      domain: "$.displayLink"
+    
+    error_handling:
+      - status_code: 429
+        action: "retry_with_backoff"
+        max_retries: 5
+      - status_code: 403
+        action: "switch_api_key"
+      - status_code: 500
+        action: "retry"
+        max_retries: 3
+
+authentication:
+  type: "api_key"
+  config:
+    key_location: "header"
+    key_name: "X-API-Key"
+    key_env_var: "SEARCH_API_KEY"
+    
+    # Alternative authentication methods
+    alternatives:
+      - type: "oauth2"
+        config:
+          client_id_env: "SEARCH_CLIENT_ID"
+          client_secret_env: "SEARCH_CLIENT_SECRET"
+          token_url: "https://api.search-engine.com/oauth/token"
+          scopes: ["search"]
+
+rate_limits:
+  requests_per_minute: 100
+  requests_per_hour: 1000
+  requests_per_day: 10000
+  concurrent_requests: 5
+
+caching:
+  enabled: true
+  ttl: 3600  # 1 hour
+  cache_key_template: "web_search:{query}:{search_type}:{language}"
+  
+monitoring:
+  metrics:
+    - "request_count"
+    - "response_time"
+    - "error_rate"
+    - "cache_hit_rate"
+    - "results_quality_score"
+  
+  alerts:
+    - condition: "error_rate > 0.1"
+      severity: "warning"
+    - condition: "response_time > 10"
+      severity: "warning"
+    - condition: "cache_hit_rate < 0.3"
+      severity: "info"
+
+security:
+  input_validation:
+    - "sanitize_query"
+    - "validate_parameters"
+    - "check_malicious_content"
+  
+  output_filtering:
+    - "remove_adult_content"
+    - "filter_malicious_urls"
+    - "validate_domains"
+  
+  privacy:
+    - "anonymize_queries"
+    - "rotate_api_keys"
+    - "log_minimal_data"
+
+deployment:
+  scaling:
+    min_instances: 1
+    max_instances: 10
+    auto_scale: true
+    cpu_threshold: 70
+    memory_threshold: 80
+  
+  resources:
+    cpu: "100m"
+    memory: "128Mi"
+  
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 30
+    timeout: 5
+    
+  environment:
+    - name: "SEARCH_API_KEY"
+      valueFrom:
+        secretKeyRef:
+          name: "search-api-secret"
+          key: "api-key"
+    
+    - name: "CACHE_ENABLED"
+      value: "true"
+    
+    - name: "LOG_LEVEL"
+      value: "INFO"
+
+testing:
+  unit_tests:
+    - name: "test_basic_search"
+      input:
+        query: "artificial intelligence"
+        num_results: 5
+      expected_output:
+        results: 
+          - title: "string"
+            url: "string"
+            snippet: "string"
+    
+    - name: "test_invalid_query"
+      input:
+        query: ""
+      expected_error: "ValidationError"
+  
+  integration_tests:
+    - name: "test_search_api_integration"
+      description: "Test integration with search API"
+      timeout: 30
+    
+    - name: "test_rate_limiting"
+      description: "Test rate limiting behavior"
+      timeout: 60
+
+documentation:
+  examples:
+    - name: "Basic Web Search"
+      description: "Perform a basic web search"
+      input:
+        query: "climate change effects"
+        num_results: 10
+      
+    - name: "News Search"
+      description: "Search for recent news articles"
+      input:
+        query: "technology trends 2024"
+        search_type: "news"
+        time_range: "week"
+    
+    - name: "Academic Search"
+      description: "Search for academic content"
+      input:
+        query: "machine learning algorithms"
+        safe_search: "strict"
+        region: "US"
+
+  troubleshooting:
+    - issue: "No results returned"
+      causes: ["Invalid query", "API rate limit", "Network connectivity"]
+      solutions: ["Verify query syntax", "Check API quotas", "Test network connection"]
+    
+    - issue: "Slow response times"
+      causes: ["High API latency", "Network issues", "Cache misses"]
+      solutions: ["Check API status", "Verify network", "Review cache configuration"]

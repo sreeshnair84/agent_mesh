@@ -1,0 +1,150 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-agentmesh}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      # Fixed: Use hardcoded defaults or double dollar signs for variable expansion
+      test: ["CMD-SHELL", "pg_isready -U user -d agentmesh"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      # Fixed: Remove array syntax from CORS_ORIGINS
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+  # Observability Service
+  observability:
+    build:
+      context: ./observability
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      BACKEND_URL: http://backend:8000
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./observability:/app
+      - ./logs:/app/logs
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://localhost:8000}
+      NEXT_PUBLIC_OBSERVABILITY_URL: ${OBSERVABILITY_URL:-http://localhost:8001}
+      NODE_ENV: ${ENVIRONMENT:-development}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - observability
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+  # Pipeline Service
+  pipeline:
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      BACKEND_URL: http://backend:8000
+      OBSERVABILITY_URL: http://observability:8001
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./pipeline:/app
+      - ./logs:/app/logs
+    networks:
+      - agent-mesh
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  agent-mesh:
+    driver: bridge

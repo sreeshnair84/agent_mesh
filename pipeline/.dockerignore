@@ -1,0 +1,26 @@
+# Python Dockerignore for pipeline
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+venv/
+ENV/
+.env
+.env.*
+.dockerignore
+.git
+.gitignore
+*.log
+logs/
+*.sqlite3
+*.db
+*.bak
+*.sql
+*.egg-info/
+build/
+dist/
+.DS_Store
+Thumbs.db

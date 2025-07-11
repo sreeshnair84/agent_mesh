@@ -1,0 +1,58 @@
+fastapi==0.104.1
+uvicorn[standard]
+sqlalchemy==2.0.23
+alembic
+asyncpg
+psycopg2-binary
+redis
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+pydantic==2.5.0
+pydantic[email]
+pydantic-settings
+python-dotenv
+httpx
+aiofiles
+celery
+prometheus-client
+structlog
+rich
+typer
+loguru
+
+# LLM and AI libraries
+openai
+anthropic
+google-generativeai
+langchain
+langchain-openai
+langchain-anthropic
+langchain-google-genai
+langgraph
+langsmith
+
+# Vector database
+pgvector
+numpy
+scikit-learn
+
+# Testing
+pytest
+pytest-asyncio
+pytest-mock
+httpx
+factory-boy
+
+# Development tools
+black
+isort
+flake8
+mypy
+
+# Additional dependencies for the implementation guide
+PyJWT
+bcrypt
+email-validator
+mypy
+pre-commit
