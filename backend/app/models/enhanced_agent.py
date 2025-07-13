@@ -10,31 +10,8 @@ from pgvector.sqlalchemy import Vector
 import uuid
 from app.core.database import Base
 
-
-# Association tables for many-to-many relationships
-agent_skills = Table(
-    'agent_skills',
-    Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('skill_id', UUID(as_uuid=True), ForeignKey('skills.id')),
-    schema='app'
-)
-
-agent_constraints = Table(
-    'agent_constraints',
-    Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('constraint_id', UUID(as_uuid=True), ForeignKey('constraints.id')),
-    schema='app'
-)
-
-agent_tools = Table(
-    'agent_tools',
-    Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('tool_id', UUID(as_uuid=True), ForeignKey('tools.id')),
-    schema='app'
-)
+# Import association tables from master_data to avoid duplication
+from app.models.master_data import agent_skills, agent_constraints, agent_tools
 
 
 class BaseModel(Base):

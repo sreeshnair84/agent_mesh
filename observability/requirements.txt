@@ -16,6 +16,7 @@ opentelemetry-instrumentation-psycopg2
 opentelemetry-instrumentation-redis
 opentelemetry-exporter-jaeger
 opentelemetry-exporter-prometheus
+deprecated
 structlog
 python-json-logger
 aiohttp

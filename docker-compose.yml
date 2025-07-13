@@ -12,8 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
     healthcheck:
-      # Fixed: Use hardcoded defaults or double dollar signs for variable expansion
-      test: ["CMD-SHELL", "pg_isready -U user -d agentmesh"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-agentmesh}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -99,11 +98,12 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     environment:
       NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://localhost:8000}
       NEXT_PUBLIC_OBSERVABILITY_URL: ${OBSERVABILITY_URL:-http://localhost:8001}
-      NODE_ENV: ${ENVIRONMENT:-development}
+      NEXT_PUBLIC_WS_URL: ${WS_URL:-ws://localhost:8000}
+      NODE_ENV: development
     ports:
       - "3000:3000"
     depends_on:
@@ -112,6 +112,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     networks:
       - agent-mesh
     restart: unless-stopped

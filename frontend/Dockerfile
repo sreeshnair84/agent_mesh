@@ -40,10 +40,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
+# Copy public folder
 COPY --from=builder /app/public ./public
 
-# Automatically leverage output traces to reduce image size
+# Copy the standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -54,4 +54,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# The standalone output creates a server.js file in the root of the output
 CMD ["node", "server.js"]

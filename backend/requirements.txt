@@ -20,6 +20,35 @@ structlog
 rich
 typer
 loguru
+psutil
+aiohttp
+websockets
+pyyaml
+jsonschema
+python-dateutil
+pytz
+requests
+matplotlib
+seaborn
+plotly
+jupyter
+notebook
+ipython
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation
+opentelemetry-exporter-prometheus
+opentelemetry-exporter-jaeger
+deprecated
+tenacity
+cachetools
+pillow
+openpyxl
+xlsxwriter
+markdown
+bleach
+paramiko
+cryptography
 
 # LLM and AI libraries
 openai

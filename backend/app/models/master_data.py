@@ -2,7 +2,7 @@
 Master data models for skills, constraints, prompts, models, and secrets
 """
 
-from sqlalchemy import Column, String, Text, JSON, ForeignKey, Boolean, Table, DateTime
+from sqlalchemy import Column, String, Text, JSON, ForeignKey, Boolean, Table, DateTime, Integer
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -165,6 +165,86 @@ class Model(BaseModel):
             "config": self.config,
             "is_active": self.is_active,
             "owner_id": str(self.owner_id),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class ModelConfiguration(BaseModel):
+    """Model configurations from master schema"""
+    
+    __tablename__ = "model_configurations"
+    __table_args__ = {"schema": "master"}
+    
+    provider_id = Column(UUID(as_uuid=True), ForeignKey('master.llm_providers.id'), nullable=False)
+    model_name = Column(String(100), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    model_type = Column(String(50), nullable=False)  # 'chat', 'completion', 'embedding', 'image'
+    max_tokens = Column(Integer)
+    context_length = Column(Integer)
+    supports_functions = Column(Boolean, default=False)
+    supports_streaming = Column(Boolean, default=False)
+    supports_vision = Column(Boolean, default=False)
+    pricing = Column(JSON, default=dict)
+    configuration = Column(JSON, default=dict)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    provider = relationship("LLMProvider", back_populates="model_configurations")
+    
+    def __repr__(self):
+        return f"<ModelConfiguration(id={self.id}, name={self.model_name}, provider_id={self.provider_id})>"
+    
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "provider_id": str(self.provider_id),
+            "model_name": self.model_name,
+            "display_name": self.display_name,
+            "model_type": self.model_type,
+            "max_tokens": self.max_tokens,
+            "context_length": self.context_length,
+            "supports_functions": self.supports_functions,
+            "supports_streaming": self.supports_streaming,
+            "supports_vision": self.supports_vision,
+            "pricing": self.pricing,
+            "configuration": self.configuration,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class LLMProvider(BaseModel):
+    """LLM provider configurations"""
+    
+    __tablename__ = "llm_providers"
+    __table_args__ = {"schema": "master"}
+    
+    name = Column(String(100), nullable=False, unique=True)
+    display_name = Column(String(255), nullable=False)
+    provider_type = Column(String(50), nullable=False)  # 'openai', 'azure_openai', 'anthropic', 'google'
+    api_base_url = Column(String(500))
+    authentication_type = Column(String(50), nullable=False)  # 'api_key', 'oauth', 'service_account'
+    default_configuration = Column(JSON, default=dict)
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    model_configurations = relationship("ModelConfiguration", back_populates="provider")
+    
+    def __repr__(self):
+        return f"<LLMProvider(id={self.id}, name={self.name}, type={self.provider_type})>"
+    
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "display_name": self.display_name,
+            "provider_type": self.provider_type,
+            "api_base_url": self.api_base_url,
+            "authentication_type": self.authentication_type,
+            "default_configuration": self.default_configuration,
+            "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

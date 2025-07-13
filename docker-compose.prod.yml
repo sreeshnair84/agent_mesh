@@ -1,0 +1,57 @@
+# Production docker-compose override
+version: '3.8'
+
+services:
+  # Frontend Application - Production Build
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://localhost:8000}
+        NEXT_PUBLIC_OBSERVABILITY_URL: ${OBSERVABILITY_URL:-http://localhost:8001}
+        NEXT_PUBLIC_WS_URL: ${WS_URL:-ws://localhost:8000}
+    environment:
+      NODE_ENV: production
+    volumes: []  # Remove volume mounts for production
+    restart: unless-stopped
+
+  # Backend - Production Configuration
+  backend:
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ENVIRONMENT: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # Observability - Production Configuration
+  observability:
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      BACKEND_URL: http://backend:8000
+      ENVIRONMENT: production
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # Pipeline - Production Configuration
+  pipeline:
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      REDIS_URL: redis://redis:6379
+      BACKEND_URL: http://backend:8000
+      OBSERVABILITY_URL: http://observability:8001
+      ENVIRONMENT: production
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped

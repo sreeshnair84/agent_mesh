@@ -6,7 +6,7 @@ Main router for API version 1
 from fastapi import APIRouter
 
 # Import endpoint modules
-from app.api.v1.endpoints import auth, agents, workflows, tools, observability, master_data
+from app.api.v1.endpoints import auth, agents, workflows, tools, observability, master_data, templates, system, integration
 from app.api.v1 import agent_payload
 
 api_router = APIRouter()
@@ -18,6 +18,9 @@ api_router.include_router(workflows.router, prefix="/workflows", tags=["Workflow
 api_router.include_router(tools.router, prefix="/tools", tags=["Tools"])
 api_router.include_router(observability.router, prefix="/observability", tags=["Observability"])
 api_router.include_router(master_data.router, prefix="/master-data", tags=["Master Data"])
+api_router.include_router(templates.router, prefix="/templates", tags=["Templates"])
+api_router.include_router(system.router, prefix="/system", tags=["System"])
+api_router.include_router(integration.router, prefix="/integration", tags=["Integration"])
 api_router.include_router(agent_payload.router, prefix="/agents", tags=["Agent Payload"])
 
 # Health check endpoint
