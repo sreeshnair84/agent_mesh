@@ -15,24 +15,24 @@ from app.core.database import Base
 agent_skills = Table(
     'agent_skills',
     Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('skill_id', UUID(as_uuid=True), ForeignKey('skills.id')),
+    Column('agent_id', UUID(as_uuid=True), ForeignKey('app.agents.id')),
+    Column('skill_id', UUID(as_uuid=True), ForeignKey('app.skills.id')),
     schema='app'
 )
 
 agent_constraints = Table(
     'agent_constraints',
     Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('constraint_id', UUID(as_uuid=True), ForeignKey('constraints.id')),
+    Column('agent_id', UUID(as_uuid=True), ForeignKey('app.agents.id')),
+    Column('constraint_id', UUID(as_uuid=True), ForeignKey('app.constraints.id')),
     schema='app'
 )
 
 agent_tools = Table(
     'agent_tools',
     Base.metadata,
-    Column('agent_id', UUID(as_uuid=True), ForeignKey('agents.id')),
-    Column('tool_id', UUID(as_uuid=True), ForeignKey('tools.id')),
+    Column('agent_id', UUID(as_uuid=True), ForeignKey('app.agents.id')),
+    Column('tool_id', UUID(as_uuid=True), ForeignKey('app.tools.id')),
     schema='app'
 )
 
@@ -56,6 +56,11 @@ class Skill(BaseModel):
     description = Column(Text, nullable=True)
     category = Column(String(50), nullable=True, index=True)
     config = Column(JSON, nullable=True)
+    tags = Column(ARRAY(String), default=[], nullable=True)
+    status = Column(String(20), default="active", nullable=True)  # 'active', 'inactive', 'draft'
+    dependencies = Column(ARRAY(String), default=[], nullable=True)
+    examples = Column(ARRAY(String), default=[], nullable=True)
+    usage_count = Column(Integer, default=0, nullable=True)
     
     # Relationships
     agents = relationship("Agent", secondary=agent_skills, back_populates="skills")
@@ -70,6 +75,11 @@ class Skill(BaseModel):
             "description": self.description,
             "category": self.category,
             "config": self.config,
+            "tags": self.tags,
+            "status": self.status,
+            "dependencies": self.dependencies,
+            "examples": self.examples,
+            "usage_count": self.usage_count,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -117,7 +127,7 @@ class Prompt(BaseModel):
     tags = Column(ARRAY(String), default=[])
     
     # Relationships
-    owner_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey('app.users.id'), nullable=False)
     owner = relationship("User", back_populates="prompts")
     
     def __repr__(self):
@@ -150,7 +160,7 @@ class Model(BaseModel):
     is_active = Column(Boolean, default=True, index=True)
     
     # Relationships
-    owner_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey('app.users.id'), nullable=False)
     owner = relationship("User", back_populates="models")
     
     def __repr__(self):
@@ -171,12 +181,12 @@ class Model(BaseModel):
 
 
 class ModelConfiguration(BaseModel):
-    """Model configurations from master schema"""
+    """Model configurations from app schema"""
     
     __tablename__ = "model_configurations"
-    __table_args__ = {"schema": "master"}
+    __table_args__ = {"schema": "app"}
     
-    provider_id = Column(UUID(as_uuid=True), ForeignKey('master.llm_providers.id'), nullable=False)
+    provider_id = Column(UUID(as_uuid=True), ForeignKey('app.llm_providers.id'), nullable=False)
     model_name = Column(String(100), nullable=False)
     display_name = Column(String(255), nullable=False)
     model_type = Column(String(50), nullable=False)  # 'chat', 'completion', 'embedding', 'image'
@@ -219,7 +229,7 @@ class LLMProvider(BaseModel):
     """LLM provider configurations"""
     
     __tablename__ = "llm_providers"
-    __table_args__ = {"schema": "master"}
+    __table_args__ = {"schema": "app"}
     
     name = Column(String(100), nullable=False, unique=True)
     display_name = Column(String(255), nullable=False)
@@ -262,7 +272,7 @@ class EnvironmentSecret(BaseModel):
     description = Column(Text, nullable=True)
     
     # Relationships
-    owner_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey('app.users.id'), nullable=False)
     owner = relationship("User", back_populates="environment_secrets")
     
     def __repr__(self):

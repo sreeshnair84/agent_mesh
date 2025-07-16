@@ -2,7 +2,7 @@
 User model
 """
 
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, Enum, Text
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, Enum, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -30,7 +30,7 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True)
     full_name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.VIEWER, index=True)
+    role = Column(Enum(UserRole, name="user_role", schema="app"), nullable=False, default="viewer", index=True)
     is_active = Column(Boolean, default=True, index=True)
     is_verified = Column(Boolean, default=False)
     avatar_url = Column(String(500))
@@ -45,6 +45,10 @@ class User(Base):
     agents = relationship("Agent", back_populates="creator")
     workflows = relationship("Workflow", back_populates="creator")
     tools = relationship("Tool", back_populates="creator")
+    prompts = relationship("Prompt", back_populates="owner")
+    models = relationship("Model", back_populates="owner")
+    environment_secrets = relationship("EnvironmentSecret", back_populates="owner")
+    created_templates = relationship("AgentTemplate", back_populates="created_by_user")
     
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, role={self.role})>"
@@ -91,7 +95,7 @@ class UserSession(Base):
     __table_args__ = {"schema": "app"}
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("app.users.id", ondelete="CASCADE"), nullable=False, index=True)
     session_token = Column(String(255), unique=True, nullable=False, index=True)
     refresh_token = Column(String(255), unique=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)

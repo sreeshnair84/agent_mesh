@@ -21,6 +21,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             <button
               onClick={onMenuClick}
               className="p-2 hover:bg-white/20 rounded-lg flex-shrink-0 transition-colors"
+              suppressHydrationWarning={true}
             >
               <Menu className="w-5 h-5 text-white" />
             </button>
@@ -48,21 +49,33 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* Right Section */}
         <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
           {/* Mobile search button */}
-          <button className="p-2 hover:bg-white/20 rounded-lg md:hidden transition-colors">
+          <button 
+            className="p-2 hover:bg-white/20 rounded-lg md:hidden transition-colors"
+            suppressHydrationWarning={true}
+          >
             <Search className="w-5 h-5 text-white" />
           </button>
           
-          <button className="p-2 hover:bg-white/20 rounded-lg relative transition-colors">
+          <button 
+            className="p-2 hover:bg-white/20 rounded-lg relative transition-colors"
+            suppressHydrationWarning={true}
+          >
             <Bell className="w-5 h-5 text-white" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
           </button>
           
-          <button className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+          <button 
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            suppressHydrationWarning={true}
+          >
             <Settings className="w-5 h-5 text-white" />
           </button>
           
           <div className="relative">
-            <button className="flex items-center space-x-2 p-2 hover:bg-white/20 rounded-lg transition-colors">
+            <button 
+              className="flex items-center space-x-2 p-2 hover:bg-white/20 rounded-lg transition-colors"
+              suppressHydrationWarning={true}
+            >
               <User className="w-5 h-5 text-white" />
               <span className="hidden sm:inline text-sm font-medium text-white">
                 {user?.name || 'Guest'}

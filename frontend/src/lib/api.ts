@@ -39,9 +39,11 @@ class ApiClient {
       method: 'GET',
       ...(params && { body: JSON.stringify(params) })
     }),
-    search: (params: any) => this.request<any[]>('/api/v1/agents/search/semantic', {
+    categories: () => this.request<any[]>('/api/v1/agents/categories'),
+    templates: () => this.request<any[]>('/api/v1/agents/templates'),
+    fromTemplate: (data: any) => this.request<any>('/api/v1/agents/from-template', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify(data),
     }),
     get: (id: string) => this.request<any>(`/api/v1/agents/${id}`),
     create: (data: any) => this.request<any>('/api/v1/agents', {
@@ -58,9 +60,41 @@ class ApiClient {
     deploy: (id: string) => this.request<any>(`/api/v1/agents/${id}/deploy`, {
       method: 'POST',
     }),
-    invoke: (id: string, input: any) => this.request<any>(`/api/v1/agents/${id}/invoke`, {
+    stop: (id: string) => this.request<void>(`/api/v1/agents/${id}/stop`, {
       method: 'POST',
-      body: JSON.stringify(input),
+    }),
+    restart: (id: string) => this.request<void>(`/api/v1/agents/${id}/restart`, {
+      method: 'POST',
+    }),
+    scale: (id: string, replicas: number) => this.request<void>(`/api/v1/agents/${id}/scale`, {
+      method: 'POST',
+      body: JSON.stringify({ replicas }),
+    }),
+    rollback: (id: string, version?: string) => this.request<void>(`/api/v1/agents/${id}/rollback`, {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    }),
+    chat: (id: string, message: string, sessionId?: string) => this.request<any>(`/api/v1/agents/${id}/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ message, session_id: sessionId }),
+    }),
+    health: (id: string) => this.request<any>(`/api/v1/agents/${id}/health`),
+    logs: (id: string, limit = 100) => this.request<any>(`/api/v1/agents/${id}/logs?limit=${limit}`),
+    metrics: (id: string) => this.request<any>(`/api/v1/agents/${id}/metrics`),
+    config: (id: string) => this.request<any>(`/api/v1/agents/${id}/config`),
+    updateConfig: (id: string, config: any) => this.request<any>(`/api/v1/agents/${id}/config`, {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    }),
+    configVersions: (id: string) => this.request<any[]>(`/api/v1/agents/${id}/config/versions`),
+    clone: (id: string, name: string) => this.request<any>(`/api/v1/agents/${id}/clone`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+    getPayload: (id: string) => this.request<any>(`/api/v1/agents/${id}/payload`),
+    updatePayload: (id: string, payload: any) => this.request<any>(`/api/v1/agents/${id}/payload`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     }),
   }
 

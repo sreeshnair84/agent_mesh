@@ -11,29 +11,64 @@ import { useRouter } from 'next/navigation'
 
 const agentSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  display_name: z.string().min(1, 'Display name is required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   tags: z.array(z.string()),
   type: z.enum(['lowcode', 'custom']),
-  template: z.string().optional(),
+  category_id: z.string().optional(),
+  template_id: z.string().optional(),
+  system_prompt: z.string().optional(),
   prompt: z.string().optional(),
   tools: z.array(z.string()),
   models: z.object({
-    llm: z.string(),
+    llm: z.string().optional(),
     embedding: z.string().optional(),
   }),
+  model_id: z.string().optional(),
   skills: z.array(z.string()),
   constraints: z.array(z.string()),
+  capabilities: z.array(z.string()),
+  configuration: z.record(z.any()).optional(),
+  memory_config: z.record(z.any()).optional(),
+  rate_limits: z.record(z.any()).optional(),
   dns: z.string().url('Must be a valid URL').optional(),
   healthUrl: z.string().url('Must be a valid URL').optional(),
+  port: z.number().optional(),
   authToken: z.string().optional(),
+  is_public: z.boolean().default(true),
+  version: z.string().default('1.0.0'),
+  input_payload: z.record(z.any()).optional(),
+  output_payload: z.record(z.any()).optional(),
 }).refine((data) => {
-  if (data.type === 'lowcode' && !data.prompt) {
-    return false
+  // For low-code agents, certain fields are mandatory
+  if (data.type === 'lowcode') {
+    const errors: string[] = [];
+    
+    if (!data.system_prompt && !data.prompt) {
+      errors.push('System prompt is required for low-code agents');
+    }
+    
+    if (!data.models.llm && !data.model_id) {
+      errors.push('LLM model is required for low-code agents');
+    }
+    
+    if (!data.tools || data.tools.length === 0) {
+      errors.push('At least one tool is required for low-code agents');
+    }
+    
+    if (errors.length > 0) {
+      throw new z.ZodError(errors.map(error => ({
+        code: 'custom',
+        message: error,
+        path: ['type']
+      })));
+    }
   }
-  return true
+  
+  return true;
 }, {
-  message: 'Prompt is required for low-code agents',
-  path: ['prompt']
+  message: 'Validation failed for agent configuration',
+  path: ['type']
 })
 
 type AgentFormData = z.infer<typeof agentSchema>
@@ -52,6 +87,11 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
     queryFn: () => api.templates.getAgentTemplates(),
   })
   
+  const { data: categories } = useQuery({
+    queryKey: ['agent-categories'],
+    queryFn: () => api.agents.categories(),
+  })
+  
   const { data: tools } = useQuery({
     queryKey: ['tools'],
     queryFn: () => api.tools.list(),
@@ -62,18 +102,35 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
     queryFn: () => api.models.list(),
   })
 
+  const { data: skills } = useQuery({
+    queryKey: ['skills'],
+    queryFn: () => api.masterData.skills.list(),
+  })
+
+  const { data: constraints } = useQuery({
+    queryKey: ['constraints'],
+    queryFn: () => api.masterData.constraints.list(),
+  })
+
   const form = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
     defaultValues: initialData || {
       type: 'lowcode',
+      display_name: '',
       tags: [],
       tools: [],
       skills: [],
       constraints: [],
+      capabilities: [],
       models: {
         llm: '',
         embedding: '',
       },
+      is_public: true,
+      version: '1.0.0',
+      configuration: {},
+      memory_config: {},
+      rate_limits: {},
     },
   })
 
@@ -89,24 +146,41 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
 
   const renderBasicInfo = () => (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Agent Name
-        </label>
-        <input
-          type="text"
-          {...form.register('name')}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          placeholder="Enter agent name"
-        />
-        {form.formState.errors.name && (
-          <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Agent Name *
+          </label>
+          <input
+            type="text"
+            {...form.register('name')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Enter unique agent name"
+          />
+          {form.formState.errors.name && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Display Name *
+          </label>
+          <input
+            type="text"
+            {...form.register('display_name')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Enter display name"
+          />
+          {form.formState.errors.display_name && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.display_name.message}</p>
+          )}
+        </div>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description
+          Description *
         </label>
         <textarea
           {...form.register('description')}
@@ -119,17 +193,95 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
         )}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Agent Type
-        </label>
-        <select
-          {...form.register('type')}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <option value="lowcode">Low-Code Agent</option>
-          <option value="custom">Custom Agent</option>
-        </select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Agent Type *
+          </label>
+          <select
+            {...form.register('type')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="lowcode">Low-Code Agent</option>
+            <option value="custom">Custom Agent</option>
+          </select>
+          {form.formState.errors.type && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.type.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Category
+          </label>
+          <select
+            {...form.register('category_id')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Select a category</option>
+            {categories?.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Template
+          </label>
+          <select
+            {...form.register('template_id')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Select a template</option>
+            {templates?.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Version
+          </label>
+          <input
+            type="text"
+            {...form.register('version')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="1.0.0"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            {...form.register('is_public')}
+            className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+          />
+          <label className="text-sm font-medium text-gray-700">
+            Public Agent
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Port
+          </label>
+          <input
+            type="number"
+            {...form.register('port', { valueAsNumber: true })}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="8080"
+          />
+        </div>
       </div>
 
       <div>
@@ -146,102 +298,295 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
           }}
         />
       </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Capabilities
+        </label>
+        <input
+          type="text"
+          placeholder="Enter capabilities separated by commas"
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          onChange={(e) => {
+            const capabilities = e.target.value.split(',').map(cap => cap.trim()).filter(Boolean)
+            form.setValue('capabilities', capabilities)
+          }}
+        />
+      </div>
     </div>
   )
 
-  const renderConfiguration = () => (
-    <div className="space-y-6">
-      {form.watch('type') === 'lowcode' && (
+  const renderConfiguration = () => {
+    const agentType = form.watch('type')
+    const isLowCode = agentType === 'lowcode'
+    
+    return (
+      <div className="space-y-6">
+        {/* System Prompt - Required for Low-Code, Optional for Custom */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            System Prompt
+            System Prompt {isLowCode ? '*' : '(Optional)'}
           </label>
           <textarea
-            {...form.register('prompt')}
+            {...form.register('system_prompt')}
             rows={6}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Enter the system prompt for your agent"
           />
-          {form.formState.errors.prompt && (
-            <p className="text-red-500 text-sm mt-1">{form.formState.errors.prompt.message}</p>
+          {form.formState.errors.system_prompt && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.system_prompt.message}</p>
+          )}
+          {isLowCode && (
+            <p className="text-sm text-gray-600 mt-1">
+              Required for low-code agents to define behavior and capabilities
+            </p>
           )}
         </div>
-      )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          LLM Model
-        </label>
-        <select
-          {...form.register('models.llm')}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          <option value="">Select a model</option>
-          {models?.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Available Tools
-        </label>
-        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-          {tools?.map((tool) => (
-            <label key={tool.id} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                value={tool.id}
-                onChange={(e) => {
-                  const currentTools = form.getValues('tools')
-                  if (e.target.checked) {
-                    form.setValue('tools', [...currentTools, tool.id])
-                  } else {
-                    form.setValue('tools', currentTools.filter(t => t !== tool.id))
-                  }
-                }}
-              />
-              <span className="text-sm">{tool.name}</span>
+        {/* Model Selection - Required for Low-Code, Optional for Custom */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              LLM Model {isLowCode ? '*' : '(Optional)'}
             </label>
-          ))}
+            <select
+              {...form.register('models.llm')}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select a model</option>
+              {models?.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+            {form.formState.errors.models?.llm && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.models.llm.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Embedding Model
+            </label>
+            <select
+              {...form.register('models.embedding')}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Select embedding model</option>
+              {models?.filter(m => m.type === 'embedding')?.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Model Configuration Reference */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Model Configuration
+          </label>
+          <select
+            {...form.register('model_id')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Select model configuration</option>
+            {models?.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} - {model.provider}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tools - Required for Low-Code, Optional for Custom */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Available Tools {isLowCode ? '*' : '(Optional)'}
+          </label>
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+            {tools?.map((tool) => (
+              <label key={tool.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  value={tool.id}
+                  onChange={(e) => {
+                    const currentTools = form.getValues('tools')
+                    if (e.target.checked) {
+                      form.setValue('tools', [...currentTools, tool.id])
+                    } else {
+                      form.setValue('tools', currentTools.filter(t => t !== tool.id))
+                    }
+                  }}
+                  className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm">{tool.name}</span>
+              </label>
+            ))}
+          </div>
+          {isLowCode && (
+            <p className="text-sm text-gray-600 mt-1">
+              At least one tool is required for low-code agents
+            </p>
+          )}
+        </div>
+
+        {/* Skills */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Skills
+          </label>
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+            {skills?.map((skill) => (
+              <label key={skill.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  value={skill.id}
+                  onChange={(e) => {
+                    const currentSkills = form.getValues('skills')
+                    if (e.target.checked) {
+                      form.setValue('skills', [...currentSkills, skill.id])
+                    } else {
+                      form.setValue('skills', currentSkills.filter(s => s !== skill.id))
+                    }
+                  }}
+                  className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm">{skill.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Constraints */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Constraints
+          </label>
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-3">
+            {constraints?.map((constraint) => (
+              <label key={constraint.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  value={constraint.id}
+                  onChange={(e) => {
+                    const currentConstraints = form.getValues('constraints')
+                    if (e.target.checked) {
+                      form.setValue('constraints', [...currentConstraints, constraint.id])
+                    } else {
+                      form.setValue('constraints', currentConstraints.filter(c => c !== constraint.id))
+                    }
+                  }}
+                  className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                />
+                <span className="text-sm">{constraint.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Advanced Configuration */}
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Advanced Configuration</h3>
+          
+          {/* Memory Configuration */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Memory Configuration (JSON)
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+              placeholder='{"type": "simple", "max_tokens": 1000}'
+              onChange={(e) => {
+                try {
+                  const config = JSON.parse(e.target.value || '{}')
+                  form.setValue('memory_config', config)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+            />
+          </div>
+
+          {/* Rate Limits */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rate Limits (JSON)
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+              placeholder='{"requests_per_minute": 60, "tokens_per_minute": 10000}'
+              onChange={(e) => {
+                try {
+                  const config = JSON.parse(e.target.value || '{}')
+                  form.setValue('rate_limits', config)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+            />
+          </div>
+
+          {/* General Configuration */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              General Configuration (JSON)
+            </label>
+            <textarea
+              rows={4}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+              placeholder='{"temperature": 0.7, "max_tokens": 1000}'
+              onChange={(e) => {
+                try {
+                  const config = JSON.parse(e.target.value || '{}')
+                  form.setValue('configuration', config)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const renderDeployment = () => (
     <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          DNS (Optional)
-        </label>
-        <input
-          type="url"
-          {...form.register('dns')}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          placeholder="https://your-agent-domain.com"
-        />
-        {form.formState.errors.dns && (
-          <p className="text-red-500 text-sm mt-1">{form.formState.errors.dns.message}</p>
-        )}
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            DNS (Optional)
+          </label>
+          <input
+            type="url"
+            {...form.register('dns')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="https://your-agent-domain.com"
+          />
+          {form.formState.errors.dns && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.dns.message}</p>
+          )}
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Health Check URL (Optional)
-        </label>
-        <input
-          type="url"
-          {...form.register('healthUrl')}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          placeholder="https://your-agent-domain.com/health"
-        />
-        {form.formState.errors.healthUrl && (
-          <p className="text-red-500 text-sm mt-1">{form.formState.errors.healthUrl.message}</p>
-        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Health Check URL (Optional)
+          </label>
+          <input
+            type="url"
+            {...form.register('healthUrl')}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="https://your-agent-domain.com/health"
+          />
+          {form.formState.errors.healthUrl && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.healthUrl.message}</p>
+          )}
+        </div>
       </div>
 
       <div>
@@ -254,6 +599,51 @@ export function AgentForm({ onSubmit, initialData }: AgentFormProps) {
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           placeholder="Enter authentication token"
         />
+      </div>
+
+      {/* Payload Configuration */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Payload Configuration</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Input Payload Schema (JSON)
+            </label>
+            <textarea
+              rows={6}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+              placeholder='{"type": "object", "properties": {"message": {"type": "string"}}}'
+              onChange={(e) => {
+                try {
+                  const schema = JSON.parse(e.target.value || '{}')
+                  form.setValue('input_payload', schema)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Output Payload Schema (JSON)
+            </label>
+            <textarea
+              rows={6}
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+              placeholder='{"type": "object", "properties": {"response": {"type": "string"}}}'
+              onChange={(e) => {
+                try {
+                  const schema = JSON.parse(e.target.value || '{}')
+                  form.setValue('output_payload', schema)
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

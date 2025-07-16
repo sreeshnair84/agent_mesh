@@ -5,7 +5,7 @@ Search Service - Handles semantic search and vector operations
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
-from app.models.enhanced_agent import Agent
+from app.models.agent import Agent
 from app.services.llm_service import LLMService
 from app.core.config import settings
 

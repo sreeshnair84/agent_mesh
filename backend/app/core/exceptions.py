@@ -54,6 +54,41 @@ class RateLimitError(AgentMeshException):
     pass
 
 
+class WorkflowError(AgentMeshException):
+    """Workflow error exception"""
+    pass
+
+
+class AgentError(AgentMeshException):
+    """Agent error exception"""
+    pass
+
+
+class ToolError(AgentMeshException):
+    """Tool error exception"""
+    pass
+
+
+class DatabaseError(AgentMeshException):
+    """Database error exception"""
+    pass
+
+
+class ConfigurationError(AgentMeshException):
+    """Configuration error exception"""
+    pass
+
+
+class TemplateError(AgentMeshException):
+    """Template error exception"""
+    pass
+
+
+class MasterDataError(AgentMeshException):
+    """Master data error exception"""
+    pass
+
+
 def create_error_response(
     error: str,
     message: str,

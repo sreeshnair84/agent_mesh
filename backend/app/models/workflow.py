@@ -19,6 +19,14 @@ class WorkflowStatus(enum.Enum):
     CANCELLED = "cancelled"
 
 
+class ExecutionStatus(enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 class WorkflowType(enum.Enum):
     SEQUENTIAL = "sequential"
     PARALLEL = "parallel"
@@ -29,13 +37,13 @@ class WorkflowType(enum.Enum):
 
 class Workflow(Base):
     __tablename__ = "workflows"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     workflow_type = Column(Enum(WorkflowType), nullable=False, default=WorkflowType.SEQUENTIAL)
-    status = Column(Enum(WorkflowStatus), nullable=False, default=WorkflowStatus.DRAFT)
+    status = Column(Enum(WorkflowStatus, name="workflow_status", schema="app"), nullable=False, default=WorkflowStatus.DRAFT)
     
     # Workflow definition as JSON
     definition = Column(JSON, nullable=False)
@@ -45,12 +53,12 @@ class Workflow(Base):
     workflow_metadata = Column(JSON, default={})
     
     # Ownership and permissions
-    created_by = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.users.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("app.users.id"), nullable=False)
     organization_id = Column(UUID(as_uuid=True), nullable=True)
     
     # Versioning
     version = Column(String(50), default="1.0.0")
-    parent_workflow_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflows.id"), nullable=True)
+    parent_workflow_id = Column(UUID(as_uuid=True), ForeignKey("app.workflows.id"), nullable=True)
     
     # Timing
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -72,13 +80,13 @@ class Workflow(Base):
 
 class WorkflowExecution(Base):
     __tablename__ = "workflow_executions"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflows.id"), nullable=False)
+    workflow_id = Column(UUID(as_uuid=True), ForeignKey("app.workflows.id"), nullable=False)
     
     # Execution details
-    status = Column(Enum(WorkflowStatus), nullable=False, default=WorkflowStatus.DRAFT)
+    status = Column(Enum(ExecutionStatus, name="execution_status", schema="app"), nullable=False, default=ExecutionStatus.PENDING)
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
     
@@ -106,10 +114,10 @@ class WorkflowExecution(Base):
 
 class WorkflowStepExecution(Base):
     __tablename__ = "workflow_step_executions"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflow_executions.id"), nullable=False)
+    execution_id = Column(UUID(as_uuid=True), ForeignKey("app.workflow_executions.id"), nullable=False)
     
     # Step details
     step_name = Column(String(255), nullable=False)
@@ -117,7 +125,7 @@ class WorkflowStepExecution(Base):
     step_config = Column(JSON, default={})
     
     # Execution details
-    status = Column(Enum(WorkflowStatus), nullable=False, default=WorkflowStatus.DRAFT)
+    status = Column(Enum(ExecutionStatus, name="execution_status", schema="app"), nullable=False, default=ExecutionStatus.PENDING)
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
     

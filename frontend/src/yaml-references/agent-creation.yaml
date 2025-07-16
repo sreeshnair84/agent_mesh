@@ -1,0 +1,268 @@
+# Agent Creation Reference
+# This file provides examples and reference for creating agents in Agent Mesh
+
+# Basic Agent Configuration
+apiVersion: v1
+kind: Agent
+metadata:
+  name: customer-support-agent
+  display_name: Customer Support Assistant
+  description: An AI agent specialized in customer support and issue resolution
+  category: customer_support
+  version: "1.0.0"
+  tags:
+    - customer-support
+    - chat
+    - issue-resolution
+    - help-desk
+
+# Agent Specification
+spec:
+  # Template and Model Configuration
+  template:
+    id: basic-assistant-template
+    type: crag # Options: crag, supervisor, plan_execute, custom
+  
+  model:
+    provider: openai
+    model_name: gpt-4
+    configuration:
+      temperature: 0.7
+      max_tokens: 2000
+      timeout: 30
+      supports_streaming: true
+      supports_functions: true
+
+  # System Configuration
+  system_prompt: |
+    You are a helpful customer support agent for Agent Mesh.
+    Your role is to assist users with their questions and issues.
+    
+    Guidelines:
+    - Be professional and empathetic
+    - Provide clear and actionable solutions
+    - Escalate complex issues when necessary
+    - Always maintain a helpful tone
+
+  # Capabilities and Tools
+  capabilities:
+    - natural_language_processing
+    - ticket_management
+    - knowledge_base_search
+    - issue_escalation
+    - real_time_chat
+
+  tools:
+    - web_search
+    - knowledge_base
+    - ticket_system
+    - email_integration
+
+  # Memory Configuration
+  memory:
+    type: hybrid # Options: short_term, long_term, hybrid
+    max_size: 1000
+    persistence: true
+    context_window: 4000
+
+  # Performance and Limits
+  performance:
+    rate_limits:
+      requests_per_minute: 60
+      requests_per_hour: 1000
+      concurrent_sessions: 10
+    
+    timeout_settings:
+      request_timeout: 30
+      session_timeout: 3600
+    
+    retry_policy:
+      max_retries: 3
+      backoff_strategy: exponential
+
+  # Security and Access
+  security:
+    authentication_required: true
+    allowed_roles:
+      - customer_support_agent
+      - admin
+    
+    data_retention:
+      conversation_history: 30 # days
+      personal_data: 90 # days
+
+  # Deployment Configuration
+  deployment:
+    replicas: 2
+    auto_scaling:
+      enabled: true
+      min_replicas: 1
+      max_replicas: 5
+      cpu_threshold: 70
+      memory_threshold: 80
+
+    health_check:
+      path: /health
+      interval: 30 # seconds
+      timeout: 5 # seconds
+      failure_threshold: 3
+
+    resources:
+      cpu: 500m
+      memory: 1Gi
+      storage: 2Gi
+
+  # Monitoring and Observability
+  monitoring:
+    metrics:
+      - response_time
+      - success_rate
+      - error_rate
+      - user_satisfaction
+    
+    alerts:
+      - name: high_error_rate
+        condition: error_rate > 0.1
+        severity: warning
+      
+      - name: slow_response
+        condition: avg_response_time > 5000
+        severity: critical
+
+    logging:
+      level: info
+      format: json
+      retention: 7 # days
+
+---
+# Advanced Agent Configuration Example
+apiVersion: v1
+kind: Agent
+metadata:
+  name: data-analyst-agent
+  display_name: Data Analysis Specialist
+  description: Specialized agent for data analysis and visualization
+  category: data_analysis
+
+spec:
+  template:
+    type: plan_execute
+    
+  model:
+    provider: anthropic
+    model_name: claude-3-opus
+    configuration:
+      temperature: 0.3
+      max_tokens: 4000
+
+  system_prompt: |
+    You are a data analysis specialist. Your expertise includes:
+    - Statistical analysis
+    - Data visualization
+    - Pattern recognition
+    - Report generation
+    
+    Always provide clear explanations with your analysis.
+
+  capabilities:
+    - statistical_analysis
+    - data_visualization
+    - pattern_recognition
+    - report_generation
+    - ml_model_training
+
+  tools:
+    - pandas_tool
+    - matplotlib_tool
+    - seaborn_tool
+    - numpy_tool
+    - sklearn_tool
+
+  memory:
+    type: long_term
+    max_size: 5000
+    persistence: true
+
+  performance:
+    rate_limits:
+      requests_per_minute: 30
+      requests_per_hour: 500
+    
+    timeout_settings:
+      request_timeout: 60 # Longer timeout for data processing
+
+  deployment:
+    replicas: 1
+    resources:
+      cpu: 1000m
+      memory: 2Gi
+      storage: 10Gi # More storage for data processing
+
+---
+# Code Generation Agent Example
+apiVersion: v1
+kind: Agent
+metadata:
+  name: code-generator-agent
+  display_name: Code Generation Assistant
+  description: AI agent specialized in code generation and development assistance
+  category: code_generation
+
+spec:
+  template:
+    type: custom
+    
+  model:
+    provider: openai
+    model_name: gpt-4-turbo
+    configuration:
+      temperature: 0.2
+      max_tokens: 8000
+      supports_functions: true
+
+  system_prompt: |
+    You are a skilled software developer and code generation assistant.
+    
+    Your capabilities include:
+    - Writing clean, efficient code
+    - Code review and optimization
+    - Debugging and troubleshooting
+    - Architecture design
+    - Best practices guidance
+    
+    Always follow coding best practices and provide explanations.
+
+  capabilities:
+    - code_generation
+    - code_review
+    - debugging
+    - architecture_design
+    - documentation_generation
+
+  tools:
+    - code_interpreter
+    - git_integration
+    - package_manager
+    - testing_framework
+    - documentation_generator
+
+  memory:
+    type: hybrid
+    max_size: 2000
+    persistence: true
+    context_window: 8000
+
+  performance:
+    rate_limits:
+      requests_per_minute: 20
+      requests_per_hour: 300
+    
+    timeout_settings:
+      request_timeout: 45
+
+  deployment:
+    replicas: 1
+    resources:
+      cpu: 800m
+      memory: 1.5Gi
+      storage: 5Gi

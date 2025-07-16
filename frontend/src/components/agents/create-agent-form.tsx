@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
 import { 
   Save, 
   ArrowLeft, 
@@ -17,18 +19,31 @@ import Link from 'next/link'
 
 interface AgentFormData {
   name: string
+  display_name: string
   description: string
   tags: string[]
-  type: 'template' | 'custom'
-  template: string
+  type: 'template' | 'custom' | 'lowcode'
+  category_id: string
+  template_id: string
+  system_prompt: string
   prompt: string
   tools: string[]
   model: string
+  model_id: string
   skills: string[]
   constraints: string[]
+  capabilities: string[]
   dns: string
   healthCheckUrl: string
   authToken: string
+  port: number
+  is_public: boolean
+  version: string
+  configuration: Record<string, any>
+  memory_config: Record<string, any>
+  rate_limits: Record<string, any>
+  input_payload: Record<string, any>
+  output_payload: Record<string, any>
 }
 
 const templates = [
@@ -76,22 +91,43 @@ export function CreateAgentForm() {
   const [currentTab, setCurrentTab] = useState<'basic' | 'configuration' | 'deployment'>('basic')
   const [formData, setFormData] = useState<AgentFormData>({
     name: '',
+    display_name: '',
     description: '',
     tags: [],
-    type: 'template',
-    template: '',
+    type: 'lowcode',
+    category_id: '',
+    template_id: '',
+    system_prompt: '',
     prompt: '',
     tools: [],
     model: '',
+    model_id: '',
     skills: [],
     constraints: [],
+    capabilities: [],
     dns: '',
     healthCheckUrl: '',
-    authToken: ''
+    authToken: '',
+    port: 8080,
+    is_public: true,
+    version: '1.0.0',
+    configuration: {},
+    memory_config: {},
+    rate_limits: {},
+    input_payload: {},
+    output_payload: {}
   })
 
   const [newTag, setNewTag] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Fetch categories from the API
+  const { data: categoriesData } = useQuery({
+    queryKey: ['agent-categories'],
+    queryFn: () => apiClient.get('/api/v1/agents/categories'),
+  })
+
+  const categories = categoriesData?.data || []
 
   const handleInputChange = (field: keyof AgentFormData, value: any) => {
     setFormData(prev => ({
@@ -167,6 +203,24 @@ export function CreateAgentForm() {
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           placeholder="Describe what this agent does"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Category *
+        </label>
+        <select
+          value={formData.category_id}
+          onChange={(e) => handleInputChange('category_id', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        >
+          <option value="">Select Category</option>
+          {categories.map((category: any) => (
+            <option key={category.id} value={category.id}>
+              {category.display_name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

@@ -61,10 +61,11 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
           <div className="fixed inset-0 bg-gray-900/80" onClick={() => setSidebarOpen?.(false)} />
           <div className="fixed left-0 top-16 bottom-0 z-50 w-64 bg-gray-50 border-r">
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Menu</h2>
+              <h2 className="text-lg font-semibold text-gray-800">Navigation</h2>
               <button
                 onClick={() => setSidebarOpen?.(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Close sidebar"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -82,7 +83,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                         setSidebarOpen?.(false)
                       }
                     }}
-                    className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 ${
+                    className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 transition-colors ${
                       pathname === item.href || pathname.startsWith(item.href + '/') 
                         ? 'bg-primary-100 text-primary-700' 
                         : 'text-gray-700'
@@ -90,7 +91,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                   >
                     <div className="flex items-center space-x-3">
                       <item.icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <span className="font-medium">{item.label}</span>
                     </div>
                     {item.subItems && (
                       expandedItems.includes(item.href) ? 
@@ -106,7 +107,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
                           key={subItem.href}
                           href={subItem.href as any}
                           onClick={() => setSidebarOpen?.(false)}
-                          className={`block p-2 rounded-lg text-sm hover:bg-gray-100 ${
+                          className={`block p-2 rounded-lg text-sm hover:bg-gray-100 transition-colors ${
                             pathname === subItem.href ? 'bg-primary-100 text-primary-700' : 'text-gray-600'
                           }`}
                         >
@@ -125,65 +126,82 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside className={`fixed left-0 top-16 bottom-0 bg-gray-50 border-r transition-all duration-300 z-30 ${
         sidebarOpen ? 'w-64' : 'w-0'
-      } lg:block hidden`}>
-        <div className="h-full overflow-hidden">
-          <div className="p-4">
-            <button
-              onClick={() => setSidebarOpen?.(false)}
-              className="w-full flex justify-end p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+      } lg:block hidden overflow-hidden`}>
+        <div className={`h-full ${sidebarOpen ? 'block' : 'hidden'}`}>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-800">Navigation</h2>
+              <button
+                onClick={() => setSidebarOpen?.(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Close sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           
-          <nav className="px-4 overflow-y-auto h-full pb-20">
-            {menuItems.map((item) => (
-              <div key={item.href} className="mb-2">
-                <Link
-                  href={item.href as any}
-                  onClick={(e) => {
-                    if (item.subItems) {
-                      e.preventDefault()
-                      toggleExpanded(item.href)
-                    }
-                  }}
-                  className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 ${
-                    pathname === item.href || pathname.startsWith(item.href + '/') 
-                      ? 'bg-primary-100 text-primary-700' 
-                      : 'text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.subItems && (
-                    expandedItems.includes(item.href) ? 
-                      <ChevronUp className="w-4 h-4" /> : 
-                      <ChevronDown className="w-4 h-4" />
+          <nav className="px-4 py-4 overflow-y-auto h-full pb-20">
+            <div className="space-y-2">
+              {menuItems.map((item) => (
+                <div key={item.href}>
+                  <Link
+                    href={item.href as any}
+                    onClick={(e) => {
+                      if (item.subItems) {
+                        e.preventDefault()
+                        toggleExpanded(item.href)
+                      }
+                    }}
+                    className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-100 transition-colors ${
+                      pathname === item.href || pathname.startsWith(item.href + '/') 
+                        ? 'bg-primary-100 text-primary-700' 
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                    {item.subItems && (
+                      expandedItems.includes(item.href) ? 
+                        <ChevronUp className="w-4 h-4" /> : 
+                        <ChevronDown className="w-4 h-4" />
+                    )}
+                  </Link>
+                  
+                  {item.subItems && expandedItems.includes(item.href) && (
+                    <div className="ml-8 mt-2 space-y-1">
+                      {item.subItems.map((subItem) => (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href as any}
+                          className={`block p-2 rounded-lg text-sm hover:bg-gray-100 transition-colors ${
+                            pathname === subItem.href ? 'bg-primary-100 text-primary-700' : 'text-gray-600'
+                          }`}
+                        >
+                          {subItem.label}
+                        </Link>
+                      ))}
+                    </div>
                   )}
-                </Link>
-                
-                {item.subItems && expandedItems.includes(item.href) && (
-                  <div className="ml-8 mt-2 space-y-1">
-                    {item.subItems.map((subItem) => (
-                      <Link
-                        key={subItem.href}
-                        href={subItem.href as any}
-                        className={`block p-2 rounded-lg text-sm hover:bg-gray-100 ${
-                          pathname === subItem.href ? 'bg-primary-100 text-primary-700' : 'text-gray-600'
-                        }`}
-                      >
-                        {subItem.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </nav>
         </div>
       </aside>
+
+      {/* Desktop sidebar open button when collapsed */}
+      {!sidebarOpen && (
+        <button
+          onClick={() => setSidebarOpen?.(true)}
+          className="fixed left-2 top-20 z-40 lg:block hidden p-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg shadow-lg transition-colors"
+          title="Open sidebar"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
     </>
   )
 }

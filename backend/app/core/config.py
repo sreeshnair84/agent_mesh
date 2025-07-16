@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = Field(default=True, env="ENABLE_METRICS")
     METRICS_PORT: int = Field(default=8080, env="METRICS_PORT")
     
+    # Default User Settings (for development/testing)
+    USE_DEFAULT_USER: bool = Field(default=True, env="USE_DEFAULT_USER")
+    DEFAULT_USER_ID: str = Field(default="550e8400-e29b-41d4-a716-446655440000", env="DEFAULT_USER_ID")
+    DEFAULT_USER_EMAIL: str = Field(default="default@agentmesh.dev", env="DEFAULT_USER_EMAIL")
+    DEFAULT_USER_USERNAME: str = Field(default="defaultuser", env="DEFAULT_USER_USERNAME")
+    DEFAULT_USER_FULL_NAME: str = Field(default="Default User", env="DEFAULT_USER_FULL_NAME")
+    DEFAULT_USER_ROLE: str = Field(default="developer", env="DEFAULT_USER_ROLE")
+    
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

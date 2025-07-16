@@ -4,7 +4,7 @@ Integration API endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 import json
 
@@ -13,7 +13,7 @@ from app.api.deps import get_current_user_from_db, get_current_developer_user
 from app.models.user import User
 from app.services.integration_service import IntegrationService
 
-router = APIRouter()
+router = APIRouter(prefix="/integration", responses={404: {"description": "Not found"}})
 integration_service = IntegrationService()
 
 # Template Integration endpoints

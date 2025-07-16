@@ -1,5 +1,8 @@
 """
-Agent Payload API endpoints for managing input/output specifications
+Agent Payload API endpoints for managing input/outp@router.put("/{agent_id}/payload-spec", response_model=SuccessResponse)
+async def update_agent_payload(
+    agent_id: str,
+    payload_spec: AgentPayloadUpdate,pecifications
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,16 +12,22 @@ from typing import Dict, Any
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.enhanced_agent import Agent
+from app.models.agent import Agent
 from app.models.user import User
-from app.schemas.enhanced_schemas import (
-    PayloadSchema, AgentPayloadUpdate, SuccessResponse
+from app.schemas.agent import (
+    PayloadSchema, AgentPayloadUpdate
 )
+from pydantic import BaseModel
+
+# Simple success response
+class SuccessResponse(BaseModel):
+    success: bool = True
+    message: str = "Operation completed successfully"
 
 router = APIRouter()
 
 
-@router.get("/{agent_id}/payload", response_model=Dict[str, Any])
+@router.get("/{agent_id}/payload-spec", response_model=Dict[str, Any])
 async def get_agent_payload(
     agent_id: str,
     current_user: User = Depends(get_current_user),
@@ -48,7 +57,7 @@ async def get_agent_payload(
         )
 
 
-@router.put("/{agent_id}/payload", response_model=SuccessResponse)
+@router.put("/{agent_id}/payload-spec", response_model=SuccessResponse)
 async def update_agent_payload(
     agent_id: str,
     payload_data: AgentPayloadUpdate,
@@ -92,7 +101,7 @@ async def update_agent_payload(
         )
 
 
-@router.post("/{agent_id}/payload/validate")
+@router.post("/{agent_id}/payload-spec/validate")
 async def validate_agent_payload(
     agent_id: str,
     payload_data: Dict[str, Any],
@@ -145,7 +154,7 @@ async def validate_agent_payload(
         )
 
 
-@router.get("/{agent_id}/payload/examples")
+@router.get("/{agent_id}/payload-spec/examples")
 async def get_agent_payload_examples(
     agent_id: str,
     current_user: User = Depends(get_current_user),

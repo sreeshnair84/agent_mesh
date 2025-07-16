@@ -90,12 +90,22 @@ export const API_ENDPOINTS = {
   // Agents
   AGENTS: {
     BASE: '/api/v1/agents',
-    SEARCH: '/api/v1/agents/search',
-    SEMANTIC_SEARCH: '/api/v1/agents/search/semantic',
+    CATEGORIES: '/api/v1/agents/categories',
+    TEMPLATES: '/api/v1/agents/templates',
+    FROM_TEMPLATE: '/api/v1/agents/from-template',
     DEPLOY: (id: string) => `/api/v1/agents/${id}/deploy`,
-    INVOKE: (id: string) => `/api/v1/agents/${id}/invoke`,
+    STOP: (id: string) => `/api/v1/agents/${id}/stop`,
+    RESTART: (id: string) => `/api/v1/agents/${id}/restart`,
+    SCALE: (id: string) => `/api/v1/agents/${id}/scale`,
+    ROLLBACK: (id: string) => `/api/v1/agents/${id}/rollback`,
+    CHAT: (id: string) => `/api/v1/agents/${id}/chat`,
     HEALTH: (id: string) => `/api/v1/agents/${id}/health`,
     LOGS: (id: string) => `/api/v1/agents/${id}/logs`,
+    METRICS: (id: string) => `/api/v1/agents/${id}/metrics`,
+    CONFIG: (id: string) => `/api/v1/agents/${id}/config`,
+    CONFIG_VERSIONS: (id: string) => `/api/v1/agents/${id}/config/versions`,
+    CLONE: (id: string) => `/api/v1/agents/${id}/clone`,
+    PAYLOAD: (id: string) => `/api/v1/agents/${id}/payload`,
   },
 
   // Workflows

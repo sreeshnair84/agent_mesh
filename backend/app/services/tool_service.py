@@ -14,7 +14,7 @@ from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.tool import Tool, ToolExecution
-from app.models.enhanced_agent import Agent
+from app.models.agent import Agent
 from app.models.user import User
 from app.schemas.tool import (
     ToolCreate, ToolUpdate, ToolResponse,

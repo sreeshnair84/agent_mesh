@@ -38,8 +38,8 @@ def get_db():
 
 async def init_db():
     """Initialize database"""
-    # Import all models here to ensure they are registered
-    from ..models import *
+    # Import models individually if they exist
+    # from ..models import specific_model_if_exists
     
     # Create all tables
     Base.metadata.create_all(bind=engine)

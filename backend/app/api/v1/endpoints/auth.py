@@ -20,7 +20,7 @@ from app.core.security import (
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, LoginResponse, Token
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", responses={404: {"description": "Not found"}})
 
 
 @router.post("/login", response_model=LoginResponse)

@@ -3,8 +3,8 @@ services:
   postgres:
     image: pgvector/pgvector:0.8.0-pg17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_USER: ${POSTGRES_USER:-agentmesh_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Ag3ntMeshSecretKey12345}
       POSTGRES_DB: ${POSTGRES_DB:-agentmesh}
     ports:
       - "5432:5432"
@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-agentmesh}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentmesh_user} -d ${POSTGRES_DB:-agentmesh}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,7 +43,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agentmesh_user}:${POSTGRES_PASSWORD:-Ag3ntMeshSecretKey12345}@postgres:5432/${POSTGRES_DB:-agentmesh}
       REDIS_URL: redis://redis:6379
       AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
       AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
@@ -51,6 +51,12 @@ services:
       CLAUDE_API_KEY: ${CLAUDE_API_KEY}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      USE_DEFAULT_USER: true
+      DEFAULT_USER_ID: 550e8400-e29b-41d4-a716-446655440000
+      DEFAULT_USER_EMAIL: default@agentmesh.dev
+      DEFAULT_USER_USERNAME: defaultuser
+      DEFAULT_USER_FULL_NAME: Default User
+      DEFAULT_USER_ROLE: developer
       # Fixed: Remove array syntax from CORS_ORIGINS
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     ports:
@@ -74,7 +80,7 @@ services:
       context: ./observability
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agentmesh_user}:${POSTGRES_PASSWORD:-Ag3ntMeshSecretKey12345}@postgres:5432/${POSTGRES_DB:-agentmesh}
       REDIS_URL: redis://redis:6379
       BACKEND_URL: http://backend:8000
       ENVIRONMENT: ${ENVIRONMENT:-development}
@@ -123,7 +129,7 @@ services:
       context: ./pipeline
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-agentmesh}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-agentmesh_user}:${POSTGRES_PASSWORD:-Ag3ntMeshSecretKey12345}@postgres:5432/${POSTGRES_DB:-agentmesh}
       REDIS_URL: redis://redis:6379
       BACKEND_URL: http://backend:8000
       OBSERVABILITY_URL: http://observability:8001

@@ -26,7 +26,7 @@ class LogLevel(enum.Enum):
 
 class Metric(Base):
     __tablename__ = "metrics"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "observability"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
@@ -34,9 +34,9 @@ class Metric(Base):
     value = Column(Float, nullable=False)
     
     # Context
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.agents.id"), nullable=True)
-    workflow_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflows.id"), nullable=True)
-    tool_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.tools.id"), nullable=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("app.agents.id"), nullable=True)
+    workflow_id = Column(UUID(as_uuid=True), ForeignKey("app.workflows.id"), nullable=True)
+    tool_id = Column(UUID(as_uuid=True), ForeignKey("app.tools.id"), nullable=True)
     
     # Labels and tags
     labels = Column(JSON, default={})
@@ -50,7 +50,7 @@ class Metric(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    agent = relationship("Agent", back_populates="metrics")
+    agent = relationship("Agent", back_populates="observability_metrics")
     
     def __repr__(self):
         return f"<Metric(id={self.id}, name='{self.name}', value={self.value})>"
@@ -58,16 +58,16 @@ class Metric(Base):
 
 class LogEntry(Base):
     __tablename__ = "log_entries"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "observability"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     level = Column(Enum(LogLevel), nullable=False)
     message = Column(Text, nullable=False)
     
     # Context
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.agents.id"), nullable=True)
-    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflow_executions.id"), nullable=True)
-    tool_execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.tool_executions.id"), nullable=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("app.agents.id"), nullable=True)
+    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("app.workflow_executions.id"), nullable=True)
+    tool_execution_id = Column(UUID(as_uuid=True), ForeignKey("app.tool_executions.id"), nullable=True)
     
     # Source information
     source = Column(String(255))
@@ -90,7 +90,7 @@ class LogEntry(Base):
 
 class Trace(Base):
     __tablename__ = "traces"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "observability"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trace_id = Column(String(255), nullable=False, unique=True)
@@ -102,9 +102,9 @@ class Trace(Base):
     service_name = Column(String(255), nullable=False)
     
     # Context
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.agents.id"), nullable=True)
-    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflow_executions.id"), nullable=True)
-    tool_execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.tool_executions.id"), nullable=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("app.agents.id"), nullable=True)
+    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("app.workflow_executions.id"), nullable=True)
+    tool_execution_id = Column(UUID(as_uuid=True), ForeignKey("app.tool_executions.id"), nullable=True)
     
     # Timing
     start_time = Column(DateTime, default=datetime.utcnow)
@@ -127,7 +127,7 @@ class Trace(Base):
 
 class Alert(Base):
     __tablename__ = "alerts"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "observability"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
@@ -159,10 +159,10 @@ class Alert(Base):
 
 class Incident(Base):
     __tablename__ = "incidents"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "observability"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    alert_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.alerts.id"), nullable=False)
+    alert_id = Column(UUID(as_uuid=True), ForeignKey("observability.alerts.id"), nullable=False)
     
     # Incident details
     title = Column(String(255), nullable=False)

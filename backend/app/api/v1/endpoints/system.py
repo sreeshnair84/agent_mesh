@@ -12,7 +12,9 @@ from app.api.deps import get_current_user_from_db, get_current_admin_user
 from app.models.user import User
 from app.services.system_service import SystemService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/system",
+    responses={404: {"description": "Not found"}},)
 system_service = SystemService()
 
 # System Status endpoints
@@ -72,7 +74,7 @@ async def get_system_info(
 # System Logs endpoints
 @router.get("/logs")
 async def get_system_logs(
-    log_level: str = Query("INFO", regex="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"),
+    log_level: str = Query("INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"),
     limit: int = Query(100, ge=1, le=1000),
     since: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -138,7 +140,7 @@ async def get_system_metrics(
 
 @router.get("/metrics/history")
 async def get_metrics_history(
-    period: str = Query("24h", regex="^(1h|24h|7d|30d)$"),
+    period: str = Query("24h", pattern="^(1h|24h|7d|30d)$"),
     current_user: User = Depends(get_current_user_from_db)
 ):
     """Get system metrics history"""
@@ -166,7 +168,7 @@ async def restart_service(
 
 @router.post("/cache/clear")
 async def clear_cache(
-    cache_type: str = Query("all", regex="^(all|health|api|database)$"),
+    cache_type: str = Query("all", pattern="^(all|health|api|database)$"),
     current_user: User = Depends(get_current_admin_user)
 ):
     """Clear system caches"""
@@ -247,7 +249,7 @@ async def get_stats_summary(
 # System Alerts endpoints
 @router.get("/alerts")
 async def get_system_alerts(
-    severity: Optional[str] = Query(None, regex="^(low|medium|high|critical)$"),
+    severity: Optional[str] = Query(None, pattern="^(low|medium|high|critical)$"),
     limit: int = Query(50, ge=1, le=200),
     current_user: User = Depends(get_current_user_from_db)
 ):
@@ -298,7 +300,7 @@ async def get_system_alerts(
 # System Backup endpoints
 @router.post("/backup")
 async def create_system_backup(
-    backup_type: str = Query("full", regex="^(full|incremental|config)$"),
+    backup_type: str = Query("full", pattern="^(full|incremental|config)$"),
     current_user: User = Depends(get_current_admin_user)
 ):
     """Create system backup"""

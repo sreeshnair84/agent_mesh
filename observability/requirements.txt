@@ -7,6 +7,7 @@ sqlalchemy
 psycopg2-binary
 alembic
 redis
+aioredis
 prometheus-client
 opentelemetry-api
 opentelemetry-sdk
@@ -27,4 +28,6 @@ passlib[bcrypt]
 python-dotenv
 tenacity
 asyncpg
+psutil
+websockets
 

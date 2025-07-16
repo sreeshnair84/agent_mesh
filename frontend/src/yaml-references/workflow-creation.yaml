@@ -1,0 +1,1331 @@
+# Workflow Creation Reference
+# This file provides examples for creating workflows in Agent Mesh
+
+# Sequential Workflow Configuration
+apiVersion: v1
+kind: Workflow
+metadata:
+  name: customer-support-workflow
+  display_name: Customer Support Workflow
+  description: Sequential workflow for handling customer support requests
+  category: customer_support
+  version: "1.0.0"
+  tags:
+    - customer-support
+    - sequential
+    - ticket-processing
+    - escalation
+
+# Workflow Specification
+spec:
+  # Workflow Type
+  type: sequential
+  
+  # Global Configuration
+  config:
+    timeout: 3600 # seconds (1 hour)
+    retry_policy:
+      max_retries: 3
+      retry_delay: 30 # seconds
+      backoff_multiplier: 2
+    
+    error_handling:
+      on_step_failure: continue # Options: continue, stop, retry
+      on_workflow_failure: notify_admin
+    
+    notifications:
+      on_start: false
+      on_completion: true
+      on_failure: true
+      channels: [email, slack]
+
+  # Input Schema
+  input_schema:
+    type: object
+    properties:
+      ticket_id:
+        type: string
+        description: Support ticket identifier
+        required: true
+      
+      customer_info:
+        type: object
+        properties:
+          name: { type: string }
+          email: { type: string }
+          priority: { type: string, enum: [low, medium, high, urgent] }
+          issue_category: { type: string }
+        required: true
+      
+      issue_description:
+        type: string
+        description: Detailed issue description
+        required: true
+      
+      attachments:
+        type: array
+        description: File attachments
+        items:
+          type: object
+          properties:
+            filename: { type: string }
+            content_type: { type: string }
+            data: { type: string, format: base64 }
+
+  # Output Schema
+  output_schema:
+    type: object
+    properties:
+      ticket_id:
+        type: string
+        description: Support ticket identifier
+      
+      status:
+        type: string
+        description: Final workflow status
+        enum: [resolved, escalated, pending, failed]
+      
+      resolution:
+        type: object
+        properties:
+          solution: { type: string }
+          resolution_time: { type: number }
+          satisfaction_score: { type: number }
+          follow_up_required: { type: boolean }
+      
+      escalation_info:
+        type: object
+        properties:
+          escalated_to: { type: string }
+          escalation_reason: { type: string }
+          escalation_time: { type: string }
+      
+      workflow_metrics:
+        type: object
+        properties:
+          total_time: { type: number }
+          steps_completed: { type: integer }
+          steps_failed: { type: integer }
+          retry_count: { type: integer }
+
+  # Workflow Steps
+  steps:
+    - id: ticket_classification
+      name: Ticket Classification
+      type: agent
+      agent_id: classification-agent
+      config:
+        model: gpt-4
+        temperature: 0.3
+        max_tokens: 1000
+        tools: [classification_tool, knowledge_base_tool]
+      
+      input_mapping:
+        - source: workflow.input.issue_description
+          target: agent.input.text
+        - source: workflow.input.customer_info.issue_category
+          target: agent.input.category_hint
+      
+      output_mapping:
+        - source: agent.output.classification
+          target: workflow.context.issue_category
+        - source: agent.output.priority
+          target: workflow.context.priority_level
+        - source: agent.output.urgency
+          target: workflow.context.urgency_score
+      
+      conditions:
+        success:
+          - condition: agent.output.classification != null
+            next_step: knowledge_base_search
+        failure:
+          - condition: retry_count < 3
+            action: retry
+          - condition: retry_count >= 3
+            next_step: manual_review
+      
+      timeout: 300 # seconds
+      retry_policy:
+        max_retries: 2
+        retry_delay: 10
+
+    - id: knowledge_base_search
+      name: Knowledge Base Search
+      type: agent
+      agent_id: knowledge-search-agent
+      config:
+        model: gpt-3.5-turbo
+        temperature: 0.2
+        max_tokens: 1500
+        tools: [knowledge_search_tool, similarity_search_tool]
+      
+      input_mapping:
+        - source: workflow.input.issue_description
+          target: agent.input.query
+        - source: workflow.context.issue_category
+          target: agent.input.category_filter
+      
+      output_mapping:
+        - source: agent.output.solutions
+          target: workflow.context.potential_solutions
+        - source: agent.output.confidence_score
+          target: workflow.context.solution_confidence
+      
+      conditions:
+        success:
+          - condition: agent.output.confidence_score >= 0.8
+            next_step: solution_generation
+          - condition: agent.output.confidence_score < 0.8
+            next_step: expert_consultation
+        failure:
+          - next_step: expert_consultation
+      
+      timeout: 180
+
+    - id: solution_generation
+      name: Solution Generation
+      type: agent
+      agent_id: solution-agent
+      config:
+        model: gpt-4
+        temperature: 0.4
+        max_tokens: 2000
+        tools: [solution_generator, template_engine]
+      
+      input_mapping:
+        - source: workflow.input.issue_description
+          target: agent.input.problem
+        - source: workflow.context.potential_solutions
+          target: agent.input.knowledge_base_results
+        - source: workflow.input.customer_info
+          target: agent.input.customer_context
+      
+      output_mapping:
+        - source: agent.output.solution
+          target: workflow.context.generated_solution
+        - source: agent.output.steps
+          target: workflow.context.solution_steps
+        - source: agent.output.estimated_time
+          target: workflow.context.estimated_resolution_time
+      
+      conditions:
+        success:
+          - next_step: solution_validation
+        failure:
+          - next_step: expert_consultation
+      
+      timeout: 240
+
+    - id: solution_validation
+      name: Solution Validation
+      type: tool
+      tool_id: validation-tool
+      config:
+        validation_criteria:
+          - completeness
+          - accuracy
+          - feasibility
+          - customer_appropriateness
+        
+        thresholds:
+          minimum_score: 0.7
+          recommended_score: 0.85
+      
+      input_mapping:
+        - source: workflow.context.generated_solution
+          target: tool.input.solution
+        - source: workflow.input.customer_info
+          target: tool.input.customer_profile
+        - source: workflow.context.issue_category
+          target: tool.input.issue_type
+      
+      output_mapping:
+        - source: tool.output.validation_score
+          target: workflow.context.validation_score
+        - source: tool.output.recommendations
+          target: workflow.context.validation_recommendations
+      
+      conditions:
+        success:
+          - condition: tool.output.validation_score >= 0.7
+            next_step: response_formatting
+          - condition: tool.output.validation_score < 0.7
+            next_step: expert_consultation
+        failure:
+          - next_step: expert_consultation
+      
+      timeout: 120
+
+    - id: response_formatting
+      name: Response Formatting
+      type: agent
+      agent_id: response-formatter-agent
+      config:
+        model: gpt-3.5-turbo
+        temperature: 0.3
+        max_tokens: 1000
+        tools: [template_engine, personalization_tool]
+      
+      input_mapping:
+        - source: workflow.context.generated_solution
+          target: agent.input.solution
+        - source: workflow.context.solution_steps
+          target: agent.input.steps
+        - source: workflow.input.customer_info
+          target: agent.input.customer_info
+      
+      output_mapping:
+        - source: agent.output.formatted_response
+          target: workflow.output.solution
+        - source: agent.output.follow_up_required
+          target: workflow.output.follow_up_required
+      
+      conditions:
+        success:
+          - next_step: send_response
+        failure:
+          - action: use_default_template
+            next_step: send_response
+      
+      timeout: 180
+
+    - id: send_response
+      name: Send Response
+      type: tool
+      tool_id: email-sender-tool
+      config:
+        template: customer_support_response
+        priority: normal
+        tracking_enabled: true
+      
+      input_mapping:
+        - source: workflow.input.customer_info.email
+          target: tool.input.to
+        - source: workflow.input.ticket_id
+          target: tool.input.subject_prefix
+        - source: workflow.output.solution
+          target: tool.input.body
+      
+      output_mapping:
+        - source: tool.output.message_id
+          target: workflow.context.response_message_id
+        - source: tool.output.status
+          target: workflow.context.response_status
+      
+      conditions:
+        success:
+          - next_step: update_ticket_status
+        failure:
+          - action: retry
+            max_retries: 2
+          - action: notify_admin
+            next_step: update_ticket_status
+      
+      timeout: 60
+
+    - id: update_ticket_status
+      name: Update Ticket Status
+      type: tool
+      tool_id: ticket-system-tool
+      config:
+        status: resolved
+        auto_close: false
+      
+      input_mapping:
+        - source: workflow.input.ticket_id
+          target: tool.input.ticket_id
+        - source: workflow.output.solution
+          target: tool.input.resolution_notes
+        - source: workflow.context.response_message_id
+          target: tool.input.response_reference
+      
+      output_mapping:
+        - source: tool.output.updated_status
+          target: workflow.output.status
+        - source: tool.output.resolution_time
+          target: workflow.output.resolution_time
+      
+      conditions:
+        success:
+          - action: complete_workflow
+        failure:
+          - action: notify_admin
+            next_step: manual_update
+      
+      timeout: 30
+
+    - id: expert_consultation
+      name: Expert Consultation
+      type: agent
+      agent_id: expert-agent
+      config:
+        model: gpt-4
+        temperature: 0.2
+        max_tokens: 2000
+        tools: [expert_knowledge_tool, escalation_tool]
+      
+      input_mapping:
+        - source: workflow.input.issue_description
+          target: agent.input.issue
+        - source: workflow.input.customer_info
+          target: agent.input.customer_info
+        - source: workflow.context.issue_category
+          target: agent.input.category
+      
+      output_mapping:
+        - source: agent.output.expert_solution
+          target: workflow.context.expert_solution
+        - source: agent.output.escalation_needed
+          target: workflow.context.escalation_needed
+        - source: agent.output.expert_notes
+          target: workflow.context.expert_notes
+      
+      conditions:
+        success:
+          - condition: agent.output.escalation_needed == false
+            next_step: response_formatting
+          - condition: agent.output.escalation_needed == true
+            next_step: escalate_ticket
+        failure:
+          - next_step: escalate_ticket
+      
+      timeout: 600
+
+    - id: escalate_ticket
+      name: Escalate Ticket
+      type: tool
+      tool_id: escalation-tool
+      config:
+        escalation_queue: technical_support
+        priority: high
+        notify_manager: true
+      
+      input_mapping:
+        - source: workflow.input.ticket_id
+          target: tool.input.ticket_id
+        - source: workflow.input.customer_info
+          target: tool.input.customer_info
+        - source: workflow.context.expert_notes
+          target: tool.input.escalation_notes
+      
+      output_mapping:
+        - source: tool.output.escalation_id
+          target: workflow.output.escalation_id
+        - source: tool.output.assigned_agent
+          target: workflow.output.escalated_to
+        - source: tool.output.escalation_reason
+          target: workflow.output.escalation_reason
+      
+      conditions:
+        success:
+          - action: complete_workflow
+        failure:
+          - action: notify_admin
+            next_step: manual_escalation
+      
+      timeout: 120
+
+    - id: manual_review
+      name: Manual Review Required
+      type: tool
+      tool_id: manual-review-tool
+      config:
+        review_queue: classification_review
+        priority: medium
+        timeout: 7200 # 2 hours
+      
+      input_mapping:
+        - source: workflow.input
+          target: tool.input.original_request
+        - source: workflow.context
+          target: tool.input.processing_context
+      
+      output_mapping:
+        - source: tool.output.review_decision
+          target: workflow.context.manual_decision
+        - source: tool.output.reviewer_notes
+          target: workflow.context.reviewer_notes
+      
+      conditions:
+        success:
+          - condition: tool.output.review_decision == "continue"
+            next_step: knowledge_base_search
+          - condition: tool.output.review_decision == "escalate"
+            next_step: escalate_ticket
+        failure:
+          - next_step: escalate_ticket
+      
+      timeout: 7200
+
+  # Triggers
+  triggers:
+    - name: new_ticket_trigger
+      type: webhook
+      config:
+        endpoint: "/webhooks/new-ticket"
+        method: POST
+        authentication:
+          type: api_key
+          header: "X-API-Key"
+        
+        filters:
+          - field: ticket.status
+            operator: equals
+            value: new
+          - field: ticket.category
+            operator: in
+            values: [technical, billing, general]
+        
+        transformation:
+          ticket_id: "$.ticket.id"
+          customer_info:
+            name: "$.customer.name"
+            email: "$.customer.email"
+            priority: "$.ticket.priority"
+            issue_category: "$.ticket.category"
+          issue_description: "$.ticket.description"
+          attachments: "$.ticket.attachments"
+
+    - name: scheduled_follow_up
+      type: scheduled
+      config:
+        schedule: "0 9 * * 1-5" # Daily at 9 AM, Monday-Friday
+        timezone: "UTC"
+        
+        filters:
+          - field: ticket.status
+            operator: equals
+            value: pending_follow_up
+          - field: ticket.last_updated
+            operator: older_than
+            value: "24h"
+        
+        batch_size: 10
+        concurrent_executions: 3
+
+    - name: escalation_trigger
+      type: event
+      config:
+        event_source: ticket_system
+        event_type: ticket.escalated
+        
+        filters:
+          - field: escalation.level
+            operator: equals
+            value: 2
+          - field: escalation.auto_assigned
+            operator: equals
+            value: true
+        
+        transformation:
+          ticket_id: "$.ticket.id"
+          customer_info: "$.ticket.customer"
+          issue_description: "$.ticket.description"
+
+  # Monitoring and Metrics
+  monitoring:
+    metrics:
+      - name: workflow_duration
+        type: histogram
+        description: Total workflow execution time
+        labels: [workflow_type, success_status]
+      
+      - name: step_success_rate
+        type: counter
+        description: Success rate per step
+        labels: [step_name, agent_id, tool_id]
+      
+      - name: customer_satisfaction
+        type: gauge
+        description: Customer satisfaction score
+        labels: [resolution_type, issue_category]
+      
+      - name: escalation_rate
+        type: counter
+        description: Rate of ticket escalation
+        labels: [escalation_reason, issue_category]
+
+    alerts:
+      - name: high_failure_rate
+        condition: workflow_success_rate < 0.8
+        severity: warning
+        notification_channels: [email, slack]
+      
+      - name: slow_response_time
+        condition: avg_workflow_duration > 1800 # 30 minutes
+        severity: critical
+        notification_channels: [email, slack, pager]
+      
+      - name: escalation_spike
+        condition: escalation_rate > 0.3
+        severity: warning
+        notification_channels: [email, slack]
+
+  # Security and Compliance
+  security:
+    data_classification: confidential
+    retention_policy: 90 # days
+    
+    access_control:
+      required_permissions:
+        - workflow.execute
+        - customer_data.read
+        - ticket_system.write
+      
+      audit_logging: true
+      sensitive_data_masking: true
+    
+    compliance:
+      gdpr_compliant: true
+      hipaa_compliant: false
+      pci_compliant: false
+
+---
+# Parallel Workflow Configuration
+apiVersion: v1
+kind: Workflow
+metadata:
+  name: content-analysis-workflow
+  display_name: Content Analysis Workflow
+  description: Parallel workflow for analyzing content from multiple sources
+  category: content_analysis
+  version: "1.0.0"
+  tags:
+    - content-analysis
+    - parallel
+    - multi-source
+    - nlp
+
+spec:
+  type: parallel
+  
+  config:
+    timeout: 1800 # 30 minutes
+    parallelism: 5
+    wait_for_completion: all # Options: all, any, majority
+    
+    failure_strategy: continue # Options: continue, fail_fast, best_effort
+    
+    aggregation:
+      method: merge # Options: merge, concat, reduce
+      conflict_resolution: latest_wins
+
+  input_schema:
+    type: object
+    properties:
+      content_sources:
+        type: array
+        items:
+          type: object
+          properties:
+            source_id: { type: string }
+            source_type: { type: string, enum: [url, file, text, api] }
+            content: { type: string }
+            metadata: { type: object }
+        required: true
+      
+      analysis_types:
+        type: array
+        items:
+          type: string
+          enum: [sentiment, entities, keywords, summary, classification]
+        required: true
+      
+      output_format:
+        type: string
+        enum: [json, xml, csv, report]
+        default: json
+
+  steps:
+    - id: sentiment_analysis
+      name: Sentiment Analysis
+      type: agent
+      agent_id: sentiment-agent
+      parallel_execution: true
+      
+      config:
+        model: bert-base-uncased
+        batch_size: 32
+        confidence_threshold: 0.8
+      
+      input_mapping:
+        - source: workflow.input.content_sources
+          target: agent.input.texts
+          transform: "extract_text_content"
+      
+      output_mapping:
+        - source: agent.output.sentiments
+          target: workflow.results.sentiment_analysis
+      
+      conditions:
+        success:
+          - action: continue_parallel
+        failure:
+          - action: continue_parallel
+            log_error: true
+      
+      timeout: 300
+
+    - id: entity_extraction
+      name: Entity Extraction
+      type: agent
+      agent_id: ner-agent
+      parallel_execution: true
+      
+      config:
+        model: spacy-en-core-web-sm
+        entity_types: [PERSON, ORG, GPE, MONEY, DATE]
+        confidence_threshold: 0.7
+      
+      input_mapping:
+        - source: workflow.input.content_sources
+          target: agent.input.texts
+          transform: "extract_text_content"
+      
+      output_mapping:
+        - source: agent.output.entities
+          target: workflow.results.entity_extraction
+      
+      timeout: 240
+
+    - id: keyword_extraction
+      name: Keyword Extraction
+      type: agent
+      agent_id: keyword-agent
+      parallel_execution: true
+      
+      config:
+        algorithm: tfidf
+        max_keywords: 20
+        min_frequency: 2
+      
+      input_mapping:
+        - source: workflow.input.content_sources
+          target: agent.input.texts
+          transform: "extract_text_content"
+      
+      output_mapping:
+        - source: agent.output.keywords
+          target: workflow.results.keyword_extraction
+      
+      timeout: 180
+
+    - id: content_summarization
+      name: Content Summarization
+      type: agent
+      agent_id: summarization-agent
+      parallel_execution: true
+      
+      config:
+        model: facebook/bart-large-cnn
+        max_length: 150
+        min_length: 50
+        summary_type: abstractive
+      
+      input_mapping:
+        - source: workflow.input.content_sources
+          target: agent.input.texts
+          transform: "extract_text_content"
+      
+      output_mapping:
+        - source: agent.output.summaries
+          target: workflow.results.content_summarization
+      
+      timeout: 360
+
+    - id: content_classification
+      name: Content Classification
+      type: agent
+      agent_id: classification-agent
+      parallel_execution: true
+      
+      config:
+        model: distilbert-base-uncased
+        categories: [news, blog, academic, social, commercial]
+        confidence_threshold: 0.6
+      
+      input_mapping:
+        - source: workflow.input.content_sources
+          target: agent.input.texts
+          transform: "extract_text_content"
+      
+      output_mapping:
+        - source: agent.output.classifications
+          target: workflow.results.content_classification
+      
+      timeout: 240
+
+    - id: result_aggregation
+      name: Result Aggregation
+      type: tool
+      tool_id: aggregation-tool
+      depends_on: [sentiment_analysis, entity_extraction, keyword_extraction, content_summarization, content_classification]
+      
+      config:
+        aggregation_method: merge
+        output_format: json
+        include_metadata: true
+      
+      input_mapping:
+        - source: workflow.results
+          target: tool.input.analysis_results
+        - source: workflow.input.content_sources
+          target: tool.input.source_metadata
+      
+      output_mapping:
+        - source: tool.output.aggregated_results
+          target: workflow.output.analysis_results
+        - source: tool.output.summary_report
+          target: workflow.output.summary_report
+      
+      timeout: 120
+
+  triggers:
+    - name: content_upload_trigger
+      type: webhook
+      config:
+        endpoint: "/webhooks/content-upload"
+        method: POST
+        authentication:
+          type: bearer_token
+        
+        transformation:
+          content_sources:
+            - source_id: "$.upload.id"
+              source_type: "file"
+              content: "$.upload.content"
+              metadata: "$.upload.metadata"
+          
+          analysis_types: "$.request.analysis_types"
+          output_format: "$.request.output_format"
+
+    - name: batch_processing_trigger
+      type: scheduled
+      config:
+        schedule: "0 2 * * *" # Daily at 2 AM
+        timezone: "UTC"
+        
+        batch_query:
+          source: content_queue
+          filter:
+            status: pending
+            priority: high
+          limit: 100
+
+  monitoring:
+    metrics:
+      - name: parallel_step_duration
+        type: histogram
+        description: Duration of each parallel step
+        labels: [step_name, agent_id]
+      
+      - name: aggregation_accuracy
+        type: gauge
+        description: Accuracy of result aggregation
+        labels: [content_type, analysis_type]
+      
+      - name: parallel_efficiency
+        type: gauge
+        description: Parallel execution efficiency
+        labels: [workflow_id, step_count]
+
+    alerts:
+      - name: parallel_step_failure
+        condition: step_failure_rate > 0.2
+        severity: warning
+      
+      - name: slow_aggregation
+        condition: aggregation_time > 300
+        severity: critical
+
+---
+# Conditional Workflow Configuration
+apiVersion: v1
+kind: Workflow
+metadata:
+  name: smart-routing-workflow
+  display_name: Smart Routing Workflow
+  description: Conditional workflow for intelligent request routing
+  category: request_routing
+  version: "1.0.0"
+  tags:
+    - conditional
+    - routing
+    - decision-making
+    - smart-dispatch
+
+spec:
+  type: conditional
+  
+  config:
+    timeout: 900 # 15 minutes
+    decision_engine: rule_based # Options: rule_based, ml_based, hybrid
+    
+    fallback_strategy: default_route
+    
+    decision_logging: true
+    performance_tracking: true
+
+  input_schema:
+    type: object
+    properties:
+      request_type:
+        type: string
+        enum: [support, sales, technical, billing, general]
+        required: true
+      
+      user_profile:
+        type: object
+        properties:
+          user_id: { type: string }
+          tier: { type: string, enum: [basic, premium, enterprise] }
+          history: { type: array }
+          preferences: { type: object }
+        required: true
+      
+      request_content:
+        type: string
+        description: Request content/message
+        required: true
+      
+      priority:
+        type: string
+        enum: [low, medium, high, urgent]
+        default: medium
+      
+      metadata:
+        type: object
+        description: Additional request metadata
+
+  steps:
+    - id: request_analysis
+      name: Request Analysis
+      type: agent
+      agent_id: request-analyzer-agent
+      
+      config:
+        model: gpt-4
+        temperature: 0.2
+        analysis_depth: comprehensive
+      
+      input_mapping:
+        - source: workflow.input.request_content
+          target: agent.input.content
+        - source: workflow.input.user_profile
+          target: agent.input.user_context
+        - source: workflow.input.request_type
+          target: agent.input.request_type
+      
+      output_mapping:
+        - source: agent.output.complexity_score
+          target: workflow.context.complexity
+        - source: agent.output.urgency_score
+          target: workflow.context.urgency
+        - source: agent.output.required_expertise
+          target: workflow.context.expertise_needed
+        - source: agent.output.estimated_time
+          target: workflow.context.estimated_time
+      
+      timeout: 180
+
+    - id: routing_decision
+      name: Routing Decision
+      type: tool
+      tool_id: decision-engine-tool
+      depends_on: [request_analysis]
+      
+      config:
+        decision_model: gradient_boosting
+        feature_weights:
+          complexity: 0.3
+          urgency: 0.25
+          user_tier: 0.2
+          expertise_match: 0.25
+        
+        routing_rules:
+          - name: enterprise_priority
+            condition: user_profile.tier == "enterprise"
+            action: route_to_enterprise_queue
+            priority: 1
+          
+          - name: high_complexity
+            condition: complexity > 0.8
+            action: route_to_expert_queue
+            priority: 2
+          
+          - name: urgent_requests
+            condition: urgency > 0.9 OR priority == "urgent"
+            action: route_to_priority_queue
+            priority: 3
+          
+          - name: technical_requests
+            condition: request_type == "technical" AND complexity > 0.6
+            action: route_to_technical_team
+            priority: 4
+          
+          - name: sales_requests
+            condition: request_type == "sales"
+            action: route_to_sales_team
+            priority: 5
+          
+          - name: billing_requests
+            condition: request_type == "billing"
+            action: route_to_billing_team
+            priority: 6
+          
+          - name: default_route
+            condition: true
+            action: route_to_general_support
+            priority: 999
+      
+      input_mapping:
+        - source: workflow.context
+          target: tool.input.analysis_results
+        - source: workflow.input.user_profile
+          target: tool.input.user_profile
+        - source: workflow.input.priority
+          target: tool.input.priority
+      
+      output_mapping:
+        - source: tool.output.routing_decision
+          target: workflow.context.routing_decision
+        - source: tool.output.assigned_queue
+          target: workflow.context.assigned_queue
+        - source: tool.output.confidence_score
+          target: workflow.context.decision_confidence
+        - source: tool.output.fallback_queues
+          target: workflow.context.fallback_options
+      
+      timeout: 60
+
+    # Conditional branches based on routing decision
+    - id: enterprise_queue_routing
+      name: Enterprise Queue Routing
+      type: agent
+      agent_id: enterprise-router-agent
+      condition: workflow.context.routing_decision == "route_to_enterprise_queue"
+      
+      config:
+        sla_requirements:
+          response_time: 15 # minutes
+          resolution_time: 240 # minutes
+        
+        escalation_path: [senior_support, account_manager, vp_support]
+        
+        resource_allocation:
+          max_concurrent: 3
+          dedicated_agents: true
+      
+      input_mapping:
+        - source: workflow.input
+          target: agent.input.request
+        - source: workflow.context.complexity
+          target: agent.input.complexity_score
+      
+      output_mapping:
+        - source: agent.output.assigned_agent
+          target: workflow.output.assigned_agent
+        - source: agent.output.estimated_resolution
+          target: workflow.output.estimated_resolution
+        - source: agent.output.sla_commitment
+          target: workflow.output.sla_commitment
+      
+      timeout: 300
+
+    - id: expert_queue_routing
+      name: Expert Queue Routing
+      type: agent
+      agent_id: expert-router-agent
+      condition: workflow.context.routing_decision == "route_to_expert_queue"
+      
+      config:
+        expertise_matching:
+          algorithm: semantic_similarity
+          threshold: 0.8
+        
+        expert_pool:
+          - expertise: [ai, machine_learning, data_science]
+            agents: [expert_ai_agent, ml_specialist_agent]
+          
+          - expertise: [security, cryptography, compliance]
+            agents: [security_expert_agent, compliance_agent]
+          
+          - expertise: [performance, scalability, infrastructure]
+            agents: [performance_agent, infra_expert_agent]
+      
+      input_mapping:
+        - source: workflow.input
+          target: agent.input.request
+        - source: workflow.context.expertise_needed
+          target: agent.input.required_expertise
+      
+      output_mapping:
+        - source: agent.output.matched_expert
+          target: workflow.output.assigned_expert
+        - source: agent.output.expertise_confidence
+          target: workflow.output.expertise_match_confidence
+      
+      timeout: 240
+
+    - id: priority_queue_routing
+      name: Priority Queue Routing
+      type: tool
+      tool_id: priority-queue-tool
+      condition: workflow.context.routing_decision == "route_to_priority_queue"
+      
+      config:
+        queue_management:
+          max_queue_size: 20
+          priority_levels: 5
+          auto_escalation: true
+        
+        notification_settings:
+          immediate_notification: true
+          escalation_timeout: 300 # 5 minutes
+          notification_channels: [email, slack, sms]
+      
+      input_mapping:
+        - source: workflow.input
+          target: tool.input.request
+        - source: workflow.context.urgency
+          target: tool.input.urgency_score
+      
+      output_mapping:
+        - source: tool.output.queue_position
+          target: workflow.output.queue_position
+        - source: tool.output.estimated_wait_time
+          target: workflow.output.estimated_wait_time
+      
+      timeout: 120
+
+    - id: technical_team_routing
+      name: Technical Team Routing
+      type: agent
+      agent_id: technical-router-agent
+      condition: workflow.context.routing_decision == "route_to_technical_team"
+      
+      config:
+        team_structure:
+          frontend_team: [frontend_agent_1, frontend_agent_2]
+          backend_team: [backend_agent_1, backend_agent_2]
+          devops_team: [devops_agent_1, devops_agent_2]
+          qa_team: [qa_agent_1, qa_agent_2]
+        
+        skill_matching:
+          algorithm: cosine_similarity
+          skills_database: technical_skills_db
+      
+      input_mapping:
+        - source: workflow.input
+          target: agent.input.request
+        - source: workflow.context.expertise_needed
+          target: agent.input.technical_requirements
+      
+      output_mapping:
+        - source: agent.output.assigned_team
+          target: workflow.output.assigned_team
+        - source: agent.output.team_lead
+          target: workflow.output.team_lead
+      
+      timeout: 180
+
+    - id: sales_team_routing
+      name: Sales Team Routing
+      type: agent
+      agent_id: sales-router-agent
+      condition: workflow.context.routing_decision == "route_to_sales_team"
+      
+      config:
+        sales_segmentation:
+          enterprise_sales: [enterprise_agent_1, enterprise_agent_2]
+          smb_sales: [smb_agent_1, smb_agent_2]
+          inside_sales: [inside_agent_1, inside_agent_2]
+        
+        lead_scoring:
+          enabled: true
+          scoring_model: rf_classifier
+          threshold: 0.6
+      
+      input_mapping:
+        - source: workflow.input
+          target: agent.input.request
+        - source: workflow.input.user_profile
+          target: agent.input.prospect_profile
+      
+      output_mapping:
+        - source: agent.output.assigned_sales_agent
+          target: workflow.output.assigned_sales_agent
+        - source: agent.output.lead_score
+          target: workflow.output.lead_score
+      
+      timeout: 150
+
+    - id: billing_team_routing
+      name: Billing Team Routing
+      type: tool
+      tool_id: billing-router-tool
+      condition: workflow.context.routing_decision == "route_to_billing_team"
+      
+      config:
+        billing_categories:
+          payment_issues: billing_payments_agent
+          invoice_questions: billing_invoice_agent
+          subscription_changes: billing_subscription_agent
+          refund_requests: billing_refund_agent
+        
+        automation_rules:
+          - category: simple_payment_issues
+            auto_resolve: true
+            resolution_tool: payment_processor_tool
+          
+          - category: invoice_regeneration
+            auto_resolve: true
+            resolution_tool: invoice_generator_tool
+      
+      input_mapping:
+        - source: workflow.input
+          target: tool.input.request
+        - source: workflow.input.user_profile
+          target: tool.input.customer_profile
+      
+      output_mapping:
+        - source: tool.output.billing_category
+          target: workflow.output.billing_category
+        - source: tool.output.auto_resolved
+          target: workflow.output.auto_resolved
+        - source: tool.output.assigned_agent
+          target: workflow.output.assigned_agent
+      
+      timeout: 90
+
+    - id: general_support_routing
+      name: General Support Routing
+      type: agent
+      agent_id: general-support-router-agent
+      condition: workflow.context.routing_decision == "route_to_general_support"
+      
+      config:
+        load_balancing:
+          algorithm: round_robin
+          consider_workload: true
+          max_concurrent_per_agent: 5
+        
+        agent_pool:
+          - agent_id: general_agent_1
+            specialties: [basic_support, faq, general_questions]
+            max_concurrent: 5
+          
+          - agent_id: general_agent_2
+            specialties: [basic_support, account_management]
+            max_concurrent: 5
+          
+          - agent_id: general_agent_3
+            specialties: [basic_support, product_info]
+            max_concurrent: 5
+      
+      input_mapping:
+        - source: workflow.input
+          target: agent.input.request
+        - source: workflow.context.complexity
+          target: agent.input.complexity_score
+      
+      output_mapping:
+        - source: agent.output.assigned_agent
+          target: workflow.output.assigned_agent
+        - source: agent.output.current_workload
+          target: workflow.output.agent_workload
+      
+      timeout: 120
+
+    - id: routing_confirmation
+      name: Routing Confirmation
+      type: tool
+      tool_id: notification-tool
+      depends_on: [enterprise_queue_routing, expert_queue_routing, priority_queue_routing, technical_team_routing, sales_team_routing, billing_team_routing, general_support_routing]
+      
+      config:
+        notification_template: routing_confirmation
+        delivery_method: email
+        include_tracking: true
+      
+      input_mapping:
+        - source: workflow.input.user_profile.email
+          target: tool.input.recipient
+        - source: workflow.output
+          target: tool.input.routing_details
+      
+      output_mapping:
+        - source: tool.output.notification_sent
+          target: workflow.output.confirmation_sent
+        - source: tool.output.tracking_id
+          target: workflow.output.tracking_id
+      
+      timeout: 60
+
+  triggers:
+    - name: new_request_trigger
+      type: webhook
+      config:
+        endpoint: "/webhooks/new-request"
+        method: POST
+        authentication:
+          type: hmac
+          secret: "${WEBHOOK_SECRET}"
+        
+        transformation:
+          request_type: "$.request.type"
+          user_profile: "$.user"
+          request_content: "$.request.content"
+          priority: "$.request.priority"
+          metadata: "$.request.metadata"
+
+    - name: escalation_trigger
+      type: event
+      config:
+        event_source: support_system
+        event_type: request.escalated
+        
+        transformation:
+          request_type: "$.original_request.type"
+          user_profile: "$.original_request.user"
+          request_content: "$.original_request.content"
+          priority: "urgent"
+          metadata:
+            escalation_reason: "$.escalation.reason"
+            original_agent: "$.escalation.original_agent"
+            escalation_time: "$.escalation.timestamp"
+
+  monitoring:
+    metrics:
+      - name: routing_accuracy
+        type: gauge
+        description: Accuracy of routing decisions
+        labels: [routing_decision, request_type]
+      
+      - name: decision_time
+        type: histogram
+        description: Time taken for routing decisions
+        labels: [complexity_level, request_type]
+      
+      - name: queue_utilization
+        type: gauge
+        description: Utilization of different queues
+        labels: [queue_name, team]
+      
+      - name: sla_compliance
+        type: counter
+        description: SLA compliance rate
+        labels: [sla_type, user_tier]
+
+    alerts:
+      - name: poor_routing_accuracy
+        condition: routing_accuracy < 0.85
+        severity: warning
+      
+      - name: slow_decision_making
+        condition: avg_decision_time > 300
+        severity: critical
+      
+      - name: queue_overload
+        condition: queue_utilization > 0.9
+        severity: warning

@@ -1,12 +1,13 @@
 """
 Agent Service - Core business logic for agent management
+Delegates to specialized services for specific operations
 """
 
 import asyncio
 import httpx
-import subprocess
 import os
 import socket
+import subprocess
 from typing import Dict, Any, Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_
@@ -15,78 +16,69 @@ from fastapi import HTTPException, BackgroundTasks
 from datetime import datetime
 import uuid
 
-from app.models.enhanced_agent import Agent
+from app.models.agent import Agent
 from app.models.master_data import Skill, Constraint, Tool
-from app.schemas.enhanced_schemas import AgentCreate, AgentUpdate, AgentInvoke, AgentInvokeResponse
+from app.schemas.agent import AgentCreate, AgentUpdate, AgentInvoke, AgentInvokeResponse
 from app.core.config import settings
 from app.services.llm_service import LLMService
 from app.services.search_service import SearchService
+from app.services.agent_creation import AgentCreationService
+from app.services.agent_deployment import AgentDeploymentManager
+from app.services.agent_configuration import AgentConfigurationManager
 
 
 class AgentService:
-    """Service for managing agents"""
+    """Service for managing agents - delegates to specialized services"""
     
     def __init__(self):
         self.llm_service = LLMService()
         self.search_service = SearchService()
+        # Initialize specialized services
+        self.creation_service = None  # Will be initialized with db session
+        self.deployment_manager = None  # Will be initialized with db session
+        self.config_manager = None  # Will be initialized with db session
         
+    def _init_services(self, db: AsyncSession):
+        """Initialize services that need database session"""
+        if not self.creation_service:
+            self.creation_service = AgentCreationService(db)
+        if not self.deployment_manager:
+            self.deployment_manager = AgentDeploymentManager(db)
+        if not self.config_manager:
+            self.config_manager = AgentConfigurationManager(db)
+    
     async def create_agent(
         self,
         agent_data: AgentCreate,
         owner_id: str,
         db: AsyncSession
     ) -> Agent:
-        """Create a new agent"""
-        # Create agent instance
-        agent = Agent(
+        """Create a new agent using specialized creation service"""
+        self._init_services(db)
+        
+        # Convert to AgentSpec format expected by creation service
+        from app.services.agent_creation import AgentSpec, ResourceRequirements
+        
+        agent_spec = AgentSpec(
             name=agent_data.name,
             description=agent_data.description,
-            type=agent_data.type,
-            template=agent_data.template,
-            prompt=agent_data.prompt,
-            llm_model=agent_data.llm_model,
-            embedding_model=agent_data.embedding_model,
-            dns=agent_data.dns,
-            health_url=agent_data.health_url,
-            tags=agent_data.tags,
-            is_public=agent_data.is_public,
-            config=agent_data.config,
-            owner_id=owner_id
+            category=getattr(agent_data, 'category', 'General'),
+            configuration=getattr(agent_data, 'config', {}),
+            instructions=getattr(agent_data, 'prompt', ''),
+            model=getattr(agent_data, 'llm_model', 'gpt-4'),
+            resource_requirements=ResourceRequirements(),
+            metadata={
+                'type': getattr(agent_data, 'type', 'assistant'),
+                'template': getattr(agent_data, 'template', 'basic'),
+                'embedding_model': getattr(agent_data, 'embedding_model', 'text-embedding-ada-002'),
+                'dns': getattr(agent_data, 'dns', ''),
+                'health_url': getattr(agent_data, 'health_url', ''),
+                'tags': getattr(agent_data, 'tags', []),
+                'is_public': getattr(agent_data, 'is_public', False),
+            }
         )
         
-        db.add(agent)
-        await db.flush()  # Get ID without committing
-        
-        # Add relationships
-        if agent_data.skill_ids:
-            skills = await db.scalars(
-                select(Skill).where(Skill.id.in_(agent_data.skill_ids))
-            )
-            agent.skills.extend(skills.all())
-        
-        if agent_data.constraint_ids:
-            constraints = await db.scalars(
-                select(Constraint).where(Constraint.id.in_(agent_data.constraint_ids))
-            )
-            agent.constraints.extend(constraints.all())
-        
-        if agent_data.tool_ids:
-            tools = await db.scalars(
-                select(Tool).where(Tool.id.in_(agent_data.tool_ids))
-            )
-            agent.tools.extend(tools.all())
-        
-        # Generate search vector for semantic search
-        if agent.description:
-            search_vector = await self.search_service.generate_embedding(
-                f"{agent.name} {agent.description}"
-            )
-            agent.search_vector = search_vector
-        
-        await db.commit()
-        await db.refresh(agent)
-        
-        return agent
+        return await self.creation_service.create_agent_from_spec(agent_spec, owner_id)
     
     async def update_agent(
         self,

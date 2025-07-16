@@ -12,7 +12,8 @@ from app.api.deps import get_current_user_from_db, get_current_developer_user
 from app.models.user import User
 from app.services.workflow_service import WorkflowService
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/workflows")
 workflow_service = WorkflowService()
 
 # Workflow endpoints
@@ -219,7 +220,7 @@ async def validate_workflow(
 @router.get("/{workflow_id}/stats")
 async def get_workflow_stats(
     workflow_id: str,
-    period: str = Query("24h", regex="^(1h|24h|7d|30d)$"),
+    period: str = Query("24h", pattern="^(1h|24h|7d|30d)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_from_db)
 ):

@@ -9,6 +9,10 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import logging
+import base64
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from app.core.config import settings
 from app.core.exceptions import AuthenticationError, AuthorizationError
@@ -18,7 +22,55 @@ from app.core.exceptions import AuthenticationError, AuthorizationError
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT token scheme
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # Don't auto-error to support optional auth
+
+
+# Setup encryption key for environment secrets
+def _get_encryption_key():
+    """
+    Generate a deterministic encryption key using PBKDF2
+    """
+    salt = settings.SECRET_KEY[:16].encode().ljust(16, b'0')  # Use first 16 chars of secret key as salt, pad if needed
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(settings.SECRET_KEY.encode()))
+    return key
+
+
+# Create Fernet cipher using the derived key
+_cipher = Fernet(_get_encryption_key())
+
+
+def encrypt_value(value: str) -> str:
+    """
+    Encrypt a string value using Fernet symmetric encryption
+    """
+    if not value:
+        return ""
+    
+    try:
+        return _cipher.encrypt(value.encode()).decode()
+    except Exception as e:
+        logging.error(f"Encryption error: {e}")
+        raise ValueError(f"Could not encrypt value: {e}")
+
+
+def decrypt_value(encrypted_value: str) -> str:
+    """
+    Decrypt a Fernet-encrypted string
+    """
+    if not encrypted_value:
+        return ""
+    
+    try:
+        return _cipher.decrypt(encrypted_value.encode()).decode()
+    except Exception as e:
+        logging.error(f"Decryption error: {e}")
+        raise ValueError(f"Could not decrypt value: {e}")
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -134,6 +186,16 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+async def get_current_user_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    """
+    Get current user from JWT token (optional for default user support)
+    """
+    if credentials is None:
+        return None
+    
+    return await get_current_user(credentials)
 
 
 async def get_current_active_user(current_user: Dict[str, Any] = Depends(get_current_user)):

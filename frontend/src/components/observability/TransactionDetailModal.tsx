@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X, Clock, User, Zap, Database, AlertCircle, CheckCircle, Activity, Copy } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
+import { apiClient } from '@/lib/api-client'
 
 interface AgentInteraction {
   id: string
@@ -40,42 +42,15 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'interactions' | 'llm' | 'metadata'>('overview')
   const [expandedInteraction, setExpandedInteraction] = useState<string | null>(null)
 
-  // Mock detailed data
-  const mockInteractions: AgentInteraction[] = [
-    {
-      id: 'int_001',
-      agent_name: 'Customer Support Bot',
-      timestamp: '2025-07-12T10:30:00Z',
-      duration: 450,
-      status: 'success',
-      input: { message: 'I need help with my order', user_id: 'user_123' },
-      output: { response: 'I can help you with your order. Let me look that up for you.', confidence: 0.95 },
-      llm_tokens: 45,
-      model_name: 'gpt-4o-mini'
-    },
-    {
-      id: 'int_002',
-      agent_name: 'Order Lookup Agent',
-      timestamp: '2025-07-12T10:30:01Z',
-      duration: 600,
-      status: 'success',
-      input: { user_id: 'user_123', query_type: 'order_status' },
-      output: { orders: [{ id: 'ord_456', status: 'shipped', tracking: 'TRK789' }] },
-      llm_tokens: 0,
-      model_name: 'N/A'
-    },
-    {
-      id: 'int_003',
-      agent_name: 'Customer Support Bot',
-      timestamp: '2025-07-12T10:30:02Z',
-      duration: 200,
-      status: 'success',
-      input: { order_data: { id: 'ord_456', status: 'shipped', tracking: 'TRK789' } },
-      output: { response: 'Your order #456 has been shipped! Tracking number: TRK789', confidence: 0.98 },
-      llm_tokens: 32,
-      model_name: 'gpt-4o-mini'
-    }
-  ]
+  // Fetch detailed transaction data
+  const { data: transactionDetails, isLoading } = useQuery({
+    queryKey: ['transaction-details', transaction.id],
+    queryFn: () => apiClient.get(`/observability/transactions/${transaction.id}`),
+    enabled: !!transaction.id
+  })
+
+  const detailedTransaction = (transactionDetails?.data || transaction) as Transaction
+  const interactions = detailedTransaction.interactions || []
 
   const statusColors = {
     success: 'bg-green-100 text-green-800',
@@ -261,7 +236,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
               <div className="relative">
                 <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300"></div>
                 <div className="space-y-4">
-                  {mockInteractions.map((interaction, index) => (
+                  {interactions.map((interaction, index) => (
                     <div key={interaction.id} className="flex items-start space-x-4">
                       <div className="flex-shrink-0 w-8 h-8 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-600">{index + 1}</span>
@@ -296,7 +271,13 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Agent Interactions</h3>
               <div className="space-y-4">
-                {mockInteractions.map((interaction) => (
+                {interactions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Activity className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p>No interactions found for this transaction</p>
+                  </div>
+                ) : (
+                  interactions.map((interaction) => (
                   <div key={interaction.id} className="border rounded-lg overflow-hidden">
                     <div
                       className="bg-gray-50 p-4 cursor-pointer hover:bg-gray-100 transition-colors"
@@ -348,7 +329,8 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
                       </div>
                     )}
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           )}
@@ -368,7 +350,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
                     <Database className="w-5 h-5 text-blue-600" />
                     <h3 className="font-medium text-gray-900">Model Calls</h3>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{mockInteractions.filter(i => i.llm_tokens > 0).length}</p>
+                  <p className="text-2xl font-bold text-gray-900">{interactions.filter(i => i.llm_tokens > 0).length}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-2">
@@ -376,7 +358,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
                     <h3 className="font-medium text-gray-900">Avg Tokens/Call</h3>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {Math.round(transaction.llm_tokens / mockInteractions.filter(i => i.llm_tokens > 0).length)}
+                    {Math.round(transaction.llm_tokens / interactions.filter(i => i.llm_tokens > 0).length)}
                   </p>
                 </div>
               </div>
@@ -384,7 +366,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Model Usage Breakdown</h3>
                 <div className="space-y-3">
-                  {mockInteractions.filter(i => i.llm_tokens > 0).map((interaction) => (
+                  {interactions.filter(i => i.llm_tokens > 0).map((interaction) => (
                     <div key={interaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <p className="font-medium text-gray-900">{interaction.agent_name}</p>

@@ -1,0 +1,1116 @@
+# User Creation Reference
+# This file provides examples for creating users in Agent Mesh
+
+# Basic User Configuration
+apiVersion: v1
+kind: User
+metadata:
+  name: john-doe
+  email: john.doe@example.com
+  display_name: John Doe
+  creation_date: "2024-01-15T10:30:00Z"
+  created_by: admin
+
+# User Specification
+spec:
+  # Basic Information
+  profile:
+    username: johndoe
+    full_name: John Doe
+    email: john.doe@example.com
+    avatar_url: https://example.com/avatars/johndoe.jpg
+    
+    # Contact Information
+    contact:
+      phone: "+1-555-0123"
+      timezone: "America/New_York"
+      language: en
+      country: US
+    
+    # Personal Details
+    bio: "Senior Software Engineer with 8+ years of experience"
+    job_title: "Senior Software Engineer"
+    department: "Engineering"
+    manager: "jane.smith@example.com"
+
+  # Authentication and Security
+  authentication:
+    # Account Status
+    is_active: true
+    is_verified: true
+    email_verified: true
+    phone_verified: false
+    
+    # Password Policy
+    password_policy:
+      min_length: 8
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special_chars: true
+      password_history: 5
+      expiration_days: 90
+    
+    # Multi-Factor Authentication
+    mfa:
+      enabled: true
+      methods:
+        - totp
+        - sms
+        - email
+      backup_codes: 10
+      recovery_email: john.doe.recovery@example.com
+    
+    # Session Management
+    session_settings:
+      max_concurrent_sessions: 3
+      idle_timeout: 1800 # 30 minutes
+      absolute_timeout: 28800 # 8 hours
+      remember_me_duration: 2592000 # 30 days
+
+  # Authorization and Permissions
+  authorization:
+    # Primary Role
+    role: editor
+    
+    # Additional Permissions
+    permissions:
+      - agents.create
+      - agents.edit
+      - agents.view
+      - workflows.create
+      - workflows.edit
+      - workflows.view
+      - tools.create
+      - tools.edit
+      - tools.view
+      - reports.view
+      - dashboard.view
+    
+    # Resource Access
+    resource_access:
+      agents:
+        - id: "*"
+          actions: [create, read, update, delete]
+          conditions:
+            - created_by: self
+            - department: engineering
+      
+      workflows:
+        - id: "*"
+          actions: [create, read, update, execute]
+          conditions:
+            - created_by: self
+            - shared_with: engineering
+      
+      tools:
+        - id: "*"
+          actions: [create, read, update]
+          conditions:
+            - created_by: self
+            - public: true
+    
+    # Data Access Restrictions
+    data_access:
+      sensitive_data: false
+      pii_access: limited
+      financial_data: false
+      audit_logs: false
+      system_logs: false
+    
+    # IP and Location Restrictions
+    access_restrictions:
+      allowed_ips:
+        - 192.168.1.0/24
+        - 10.0.0.0/8
+      
+      allowed_countries:
+        - US
+        - CA
+        - GB
+      
+      time_restrictions:
+        - days: [monday, tuesday, wednesday, thursday, friday]
+          hours: "09:00-17:00"
+          timezone: "America/New_York"
+
+  # User Preferences
+  preferences:
+    # UI/UX Preferences
+    ui:
+      theme: dark
+      language: en
+      date_format: "MM/DD/YYYY"
+      time_format: "12h"
+      timezone: "America/New_York"
+      
+      # Dashboard Settings
+      dashboard:
+        default_view: agents
+        refresh_interval: 30 # seconds
+        items_per_page: 20
+        sidebar_collapsed: false
+        
+        # Widget Preferences
+        widgets:
+          - type: agent_status
+            position: 1
+            size: medium
+            visible: true
+          
+          - type: workflow_metrics
+            position: 2
+            size: large
+            visible: true
+          
+          - type: recent_activity
+            position: 3
+            size: small
+            visible: true
+    
+    # Notification Preferences
+    notifications:
+      email:
+        enabled: true
+        frequency: immediate
+        types:
+          - agent_failures
+          - workflow_completions
+          - system_alerts
+        
+        digest:
+          enabled: true
+          frequency: daily
+          time: "09:00"
+          timezone: "America/New_York"
+      
+      in_app:
+        enabled: true
+        types:
+          - agent_status_changes
+          - workflow_updates
+          - system_notifications
+          - mentions
+        
+        sound: true
+        desktop: true
+      
+      slack:
+        enabled: true
+        webhook_url: "https://hooks.slack.com/services/..."
+        channel: "#engineering-alerts"
+        types:
+          - critical_alerts
+          - agent_failures
+      
+      sms:
+        enabled: false
+        phone_number: "+1-555-0123"
+        types:
+          - critical_alerts
+    
+    # Privacy Settings
+    privacy:
+      profile_visibility: team
+      activity_visibility: private
+      analytics_tracking: enabled
+      data_collection: essential_only
+      
+      # GDPR Compliance
+      gdpr:
+        consent_given: true
+        consent_date: "2024-01-15T10:30:00Z"
+        data_retention: 2555 # days (7 years)
+        right_to_be_forgotten: available
+
+  # Workspace and Environment
+  workspace:
+    # Default Workspace
+    default_workspace: engineering_workspace
+    
+    # Workspace Access
+    accessible_workspaces:
+      - name: engineering_workspace
+        role: editor
+        permissions: [create, read, update, delete]
+      
+      - name: qa_workspace
+        role: viewer
+        permissions: [read, execute]
+      
+      - name: shared_workspace
+        role: contributor
+        permissions: [read, create, update]
+    
+    # Environment Settings
+    environment:
+      default_region: us-east-1
+      compute_quota:
+        cpu_hours: 100
+        memory_gb_hours: 500
+        storage_gb: 50
+      
+      # Resource Limits
+      limits:
+        max_agents: 20
+        max_workflows: 50
+        max_tools: 30
+        max_concurrent_executions: 10
+    
+    # Collaboration Settings
+    collaboration:
+      sharing_permissions: team
+      default_sharing_level: read
+      allow_public_sharing: false
+      
+      # Team Memberships
+      teams:
+        - name: engineering
+          role: member
+          permissions: [collaborate, share, review]
+        
+        - name: ai_research
+          role: contributor
+          permissions: [collaborate, share]
+
+  # Billing and Subscription
+  billing:
+    # Subscription Details
+    subscription:
+      plan: professional
+      status: active
+      billing_cycle: monthly
+      renewal_date: "2024-02-15T10:30:00Z"
+      
+      # Usage Quotas
+      quotas:
+        agent_executions: 10000
+        workflow_executions: 5000
+        tool_calls: 50000
+        storage_gb: 100
+        compute_hours: 200
+    
+    # Billing Information
+    billing_info:
+      billing_email: billing@example.com
+      payment_method: credit_card
+      currency: USD
+      
+      # Invoice Preferences
+      invoice_preferences:
+        delivery_method: email
+        format: pdf
+        itemization: detailed
+        net_terms: 30
+    
+    # Cost Center
+    cost_center:
+      department: engineering
+      project: ai_platform
+      cost_code: ENG-001
+      budget_limit: 5000 # USD per month
+
+  # Audit and Compliance
+  audit:
+    # Audit Settings
+    audit_logging: enabled
+    log_retention: 2555 # days (7 years)
+    
+    # Compliance Requirements
+    compliance:
+      frameworks:
+        - gdpr
+        - ccpa
+        - sox
+      
+      # Data Classification
+      data_classification:
+        personal_data: true
+        sensitive_data: false
+        confidential_data: false
+        public_data: true
+      
+      # Retention Policies
+      retention_policies:
+        - data_type: activity_logs
+          retention_period: 90 # days
+        
+        - data_type: agent_executions
+          retention_period: 365 # days
+        
+        - data_type: workflow_data
+          retention_period: 1825 # days (5 years)
+    
+    # Privacy Impact Assessment
+    privacy_impact:
+      assessment_date: "2024-01-15T10:30:00Z"
+      risk_level: low
+      reviewer: privacy_officer
+      next_review: "2024-07-15T10:30:00Z"
+
+  # Integration and API Access
+  integrations:
+    # API Access
+    api_access:
+      enabled: true
+      rate_limits:
+        requests_per_minute: 100
+        requests_per_hour: 1000
+        requests_per_day: 10000
+      
+      # API Keys
+      api_keys:
+        - name: primary_key
+          created: "2024-01-15T10:30:00Z"
+          last_used: "2024-01-16T14:22:00Z"
+          permissions: [read, write]
+          restrictions:
+            - ip_whitelist: ["192.168.1.0/24"]
+            - time_window: "09:00-17:00"
+        
+        - name: readonly_key
+          created: "2024-01-15T10:30:00Z"
+          last_used: "2024-01-16T09:15:00Z"
+          permissions: [read]
+          restrictions: []
+    
+    # Third-Party Integrations
+    third_party:
+      slack:
+        enabled: true
+        workspace: engineering-team
+        user_id: U1234567890
+        permissions: [read, write]
+      
+      github:
+        enabled: true
+        username: johndoe
+        access_token: encrypted_token
+        permissions: [read, write]
+      
+      jira:
+        enabled: true
+        user_id: johndoe@example.com
+        project_access: [ENG, AI]
+        permissions: [read, write]
+
+  # Monitoring and Analytics
+  monitoring:
+    # Activity Tracking
+    activity_tracking:
+      enabled: true
+      track_page_views: true
+      track_feature_usage: true
+      track_performance_metrics: true
+      
+      # Retention Period
+      retention_period: 90 # days
+    
+    # Performance Metrics
+    performance_metrics:
+      - metric: login_frequency
+        current_value: 1.2 # per day
+        target_value: 1.0
+      
+      - metric: feature_adoption
+        current_value: 0.75
+        target_value: 0.80
+      
+      - metric: error_rate
+        current_value: 0.02
+        target_value: 0.01
+    
+    # Health Indicators
+    health_indicators:
+      overall_health: good
+      last_activity: "2024-01-16T14:22:00Z"
+      session_count: 45
+      average_session_duration: 3600 # seconds
+      
+      # Alerts
+      alerts:
+        - type: unusual_activity
+          threshold: 3 # standard deviations
+          enabled: true
+        
+        - type: failed_login_attempts
+          threshold: 5
+          enabled: true
+        
+        - type: permission_escalation
+          threshold: 1
+          enabled: true
+
+---
+# Administrator User Configuration
+apiVersion: v1
+kind: User
+metadata:
+  name: admin-user
+  email: admin@example.com
+  display_name: System Administrator
+  creation_date: "2024-01-01T00:00:00Z"
+  created_by: system
+
+spec:
+  profile:
+    username: admin
+    full_name: System Administrator
+    email: admin@example.com
+    avatar_url: https://example.com/avatars/admin.jpg
+    
+    contact:
+      phone: "+1-555-0100"
+      timezone: "UTC"
+      language: en
+      country: US
+    
+    bio: "System Administrator with full access to Agent Mesh"
+    job_title: "System Administrator"
+    department: "IT Operations"
+
+  authentication:
+    is_active: true
+    is_verified: true
+    email_verified: true
+    phone_verified: true
+    
+    password_policy:
+      min_length: 12
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special_chars: true
+      password_history: 10
+      expiration_days: 60
+    
+    mfa:
+      enabled: true
+      methods:
+        - totp
+        - hardware_token
+        - backup_codes
+      backup_codes: 20
+      recovery_email: admin.recovery@example.com
+    
+    session_settings:
+      max_concurrent_sessions: 5
+      idle_timeout: 900 # 15 minutes
+      absolute_timeout: 14400 # 4 hours
+      remember_me_duration: 86400 # 1 day
+
+  authorization:
+    role: admin
+    
+    permissions:
+      - "*" # All permissions
+    
+    resource_access:
+      - resource: "*"
+        actions: ["*"]
+        conditions: []
+    
+    data_access:
+      sensitive_data: true
+      pii_access: full
+      financial_data: true
+      audit_logs: true
+      system_logs: true
+    
+    access_restrictions:
+      allowed_ips:
+        - 0.0.0.0/0 # All IPs (admin access)
+      
+      allowed_countries:
+        - "*" # All countries
+      
+      time_restrictions: [] # No time restrictions
+
+  preferences:
+    ui:
+      theme: dark
+      language: en
+      date_format: "YYYY-MM-DD"
+      time_format: "24h"
+      timezone: "UTC"
+      
+      dashboard:
+        default_view: system_overview
+        refresh_interval: 15 # seconds
+        items_per_page: 50
+        sidebar_collapsed: false
+        
+        widgets:
+          - type: system_health
+            position: 1
+            size: large
+            visible: true
+          
+          - type: user_activity
+            position: 2
+            size: medium
+            visible: true
+          
+          - type: security_alerts
+            position: 3
+            size: medium
+            visible: true
+          
+          - type: resource_usage
+            position: 4
+            size: small
+            visible: true
+    
+    notifications:
+      email:
+        enabled: true
+        frequency: immediate
+        types:
+          - system_alerts
+          - security_incidents
+          - user_registrations
+          - critical_errors
+        
+        digest:
+          enabled: true
+          frequency: hourly
+          time: "00:00"
+          timezone: "UTC"
+      
+      in_app:
+        enabled: true
+        types:
+          - all_notifications
+        
+        sound: true
+        desktop: true
+      
+      slack:
+        enabled: true
+        webhook_url: "https://hooks.slack.com/services/..."
+        channel: "#admin-alerts"
+        types:
+          - system_alerts
+          - security_incidents
+          - critical_errors
+      
+      sms:
+        enabled: true
+        phone_number: "+1-555-0100"
+        types:
+          - critical_alerts
+          - security_incidents
+    
+    privacy:
+      profile_visibility: private
+      activity_visibility: private
+      analytics_tracking: enabled
+      data_collection: full
+
+  workspace:
+    default_workspace: admin_workspace
+    
+    accessible_workspaces:
+      - name: "*"
+        role: admin
+        permissions: ["*"]
+    
+    environment:
+      default_region: us-east-1
+      compute_quota:
+        cpu_hours: unlimited
+        memory_gb_hours: unlimited
+        storage_gb: unlimited
+      
+      limits:
+        max_agents: unlimited
+        max_workflows: unlimited
+        max_tools: unlimited
+        max_concurrent_executions: unlimited
+    
+    collaboration:
+      sharing_permissions: private
+      default_sharing_level: none
+      allow_public_sharing: false
+      
+      teams:
+        - name: administrators
+          role: admin
+          permissions: ["*"]
+
+  billing:
+    subscription:
+      plan: enterprise
+      status: active
+      billing_cycle: annual
+      renewal_date: "2024-12-31T23:59:59Z"
+      
+      quotas:
+        agent_executions: unlimited
+        workflow_executions: unlimited
+        tool_calls: unlimited
+        storage_gb: unlimited
+        compute_hours: unlimited
+    
+    billing_info:
+      billing_email: billing@example.com
+      payment_method: enterprise_agreement
+      currency: USD
+      
+      invoice_preferences:
+        delivery_method: email
+        format: pdf
+        itemization: summary
+        net_terms: 30
+    
+    cost_center:
+      department: it_operations
+      project: infrastructure
+      cost_code: IT-001
+      budget_limit: unlimited
+
+  audit:
+    audit_logging: enabled
+    log_retention: 2555 # days (7 years)
+    
+    compliance:
+      frameworks:
+        - gdpr
+        - ccpa
+        - sox
+        - hipaa
+        - pci_dss
+      
+      data_classification:
+        personal_data: true
+        sensitive_data: true
+        confidential_data: true
+        public_data: true
+      
+      retention_policies:
+        - data_type: activity_logs
+          retention_period: 2555 # days
+        
+        - data_type: agent_executions
+          retention_period: 2555 # days
+        
+        - data_type: workflow_data
+          retention_period: 2555 # days
+        
+        - data_type: audit_logs
+          retention_period: 2555 # days
+    
+    privacy_impact:
+      assessment_date: "2024-01-01T00:00:00Z"
+      risk_level: high
+      reviewer: privacy_officer
+      next_review: "2024-04-01T00:00:00Z"
+
+  integrations:
+    api_access:
+      enabled: true
+      rate_limits:
+        requests_per_minute: unlimited
+        requests_per_hour: unlimited
+        requests_per_day: unlimited
+      
+      api_keys:
+        - name: admin_key
+          created: "2024-01-01T00:00:00Z"
+          last_used: "2024-01-16T14:22:00Z"
+          permissions: ["*"]
+          restrictions: []
+    
+    third_party:
+      slack:
+        enabled: true
+        workspace: admin-workspace
+        user_id: A1234567890
+        permissions: ["*"]
+      
+      ldap:
+        enabled: true
+        server: ldap.example.com
+        bind_dn: "cn=admin,dc=example,dc=com"
+        search_base: "dc=example,dc=com"
+      
+      sso:
+        enabled: true
+        provider: okta
+        domain: example.okta.com
+        client_id: admin_client
+
+  monitoring:
+    activity_tracking:
+      enabled: true
+      track_page_views: true
+      track_feature_usage: true
+      track_performance_metrics: true
+      track_admin_actions: true
+      
+      retention_period: 2555 # days
+    
+    performance_metrics:
+      - metric: login_frequency
+        current_value: 2.5 # per day
+        target_value: 2.0
+      
+      - metric: admin_actions_per_day
+        current_value: 15.0
+        target_value: 10.0
+      
+      - metric: security_incidents_resolved
+        current_value: 1.0
+        target_value: 0.0
+    
+    health_indicators:
+      overall_health: excellent
+      last_activity: "2024-01-16T14:22:00Z"
+      session_count: 156
+      average_session_duration: 7200 # seconds
+      
+      alerts:
+        - type: unusual_activity
+          threshold: 2 # standard deviations
+          enabled: true
+        
+        - type: failed_login_attempts
+          threshold: 3
+          enabled: true
+        
+        - type: permission_escalation
+          threshold: 1
+          enabled: true
+        
+        - type: admin_action_anomaly
+          threshold: 5 # standard deviations
+          enabled: true
+
+---
+# Viewer User Configuration
+apiVersion: v1
+kind: User
+metadata:
+  name: viewer-user
+  email: viewer@example.com
+  display_name: John Viewer
+  creation_date: "2024-01-10T09:00:00Z"
+  created_by: admin
+
+spec:
+  profile:
+    username: viewer
+    full_name: John Viewer
+    email: viewer@example.com
+    avatar_url: https://example.com/avatars/viewer.jpg
+    
+    contact:
+      phone: "+1-555-0200"
+      timezone: "America/Los_Angeles"
+      language: en
+      country: US
+    
+    bio: "Business Analyst with read-only access to Agent Mesh"
+    job_title: "Business Analyst"
+    department: "Business Intelligence"
+
+  authentication:
+    is_active: true
+    is_verified: true
+    email_verified: true
+    phone_verified: false
+    
+    password_policy:
+      min_length: 8
+      require_uppercase: true
+      require_lowercase: true
+      require_numbers: true
+      require_special_chars: true
+      password_history: 5
+      expiration_days: 90
+    
+    mfa:
+      enabled: false
+      methods: []
+      backup_codes: 0
+      recovery_email: viewer.recovery@example.com
+    
+    session_settings:
+      max_concurrent_sessions: 2
+      idle_timeout: 3600 # 1 hour
+      absolute_timeout: 28800 # 8 hours
+      remember_me_duration: 2592000 # 30 days
+
+  authorization:
+    role: viewer
+    
+    permissions:
+      - agents.view
+      - workflows.view
+      - workflows.execute
+      - tools.view
+      - tools.execute
+      - reports.view
+      - dashboard.view
+    
+    resource_access:
+      agents:
+        - id: "*"
+          actions: [read]
+          conditions:
+            - public: true
+            - shared_with: business_intelligence
+      
+      workflows:
+        - id: "*"
+          actions: [read, execute]
+          conditions:
+            - public: true
+            - shared_with: business_intelligence
+      
+      tools:
+        - id: "*"
+          actions: [read, execute]
+          conditions:
+            - public: true
+            - category: reporting
+    
+    data_access:
+      sensitive_data: false
+      pii_access: none
+      financial_data: false
+      audit_logs: false
+      system_logs: false
+    
+    access_restrictions:
+      allowed_ips:
+        - 192.168.1.0/24
+        - 10.0.0.0/8
+      
+      allowed_countries:
+        - US
+      
+      time_restrictions:
+        - days: [monday, tuesday, wednesday, thursday, friday]
+          hours: "08:00-18:00"
+          timezone: "America/Los_Angeles"
+
+  preferences:
+    ui:
+      theme: light
+      language: en
+      date_format: "MM/DD/YYYY"
+      time_format: "12h"
+      timezone: "America/Los_Angeles"
+      
+      dashboard:
+        default_view: reports
+        refresh_interval: 60 # seconds
+        items_per_page: 10
+        sidebar_collapsed: true
+        
+        widgets:
+          - type: workflow_metrics
+            position: 1
+            size: large
+            visible: true
+          
+          - type: agent_usage
+            position: 2
+            size: medium
+            visible: true
+          
+          - type: recent_executions
+            position: 3
+            size: small
+            visible: true
+    
+    notifications:
+      email:
+        enabled: true
+        frequency: daily
+        types:
+          - report_ready
+          - workflow_completions
+        
+        digest:
+          enabled: true
+          frequency: daily
+          time: "09:00"
+          timezone: "America/Los_Angeles"
+      
+      in_app:
+        enabled: true
+        types:
+          - workflow_updates
+          - report_notifications
+        
+        sound: false
+        desktop: true
+      
+      slack:
+        enabled: false
+        webhook_url: ""
+        channel: ""
+        types: []
+      
+      sms:
+        enabled: false
+        phone_number: ""
+        types: []
+    
+    privacy:
+      profile_visibility: team
+      activity_visibility: team
+      analytics_tracking: enabled
+      data_collection: essential_only
+
+  workspace:
+    default_workspace: bi_workspace
+    
+    accessible_workspaces:
+      - name: bi_workspace
+        role: viewer
+        permissions: [read, execute]
+      
+      - name: shared_workspace
+        role: viewer
+        permissions: [read]
+    
+    environment:
+      default_region: us-west-2
+      compute_quota:
+        cpu_hours: 10
+        memory_gb_hours: 50
+        storage_gb: 5
+      
+      limits:
+        max_agents: 0
+        max_workflows: 0
+        max_tools: 0
+        max_concurrent_executions: 3
+    
+    collaboration:
+      sharing_permissions: none
+      default_sharing_level: none
+      allow_public_sharing: false
+      
+      teams:
+        - name: business_intelligence
+          role: member
+          permissions: [read, execute]
+
+  billing:
+    subscription:
+      plan: basic
+      status: active
+      billing_cycle: monthly
+      renewal_date: "2024-02-10T09:00:00Z"
+      
+      quotas:
+        agent_executions: 0
+        workflow_executions: 1000
+        tool_calls: 5000
+        storage_gb: 5
+        compute_hours: 10
+    
+    billing_info:
+      billing_email: billing@example.com
+      payment_method: credit_card
+      currency: USD
+      
+      invoice_preferences:
+        delivery_method: email
+        format: pdf
+        itemization: summary
+        net_terms: 30
+    
+    cost_center:
+      department: business_intelligence
+      project: analytics
+      cost_code: BI-001
+      budget_limit: 100 # USD per month
+
+  audit:
+    audit_logging: enabled
+    log_retention: 90 # days
+    
+    compliance:
+      frameworks:
+        - gdpr
+        - ccpa
+      
+      data_classification:
+        personal_data: false
+        sensitive_data: false
+        confidential_data: false
+        public_data: true
+      
+      retention_policies:
+        - data_type: activity_logs
+          retention_period: 90 # days
+        
+        - data_type: workflow_executions
+          retention_period: 180 # days
+    
+    privacy_impact:
+      assessment_date: "2024-01-10T09:00:00Z"
+      risk_level: low
+      reviewer: privacy_officer
+      next_review: "2024-07-10T09:00:00Z"
+
+  integrations:
+    api_access:
+      enabled: false
+      rate_limits:
+        requests_per_minute: 0
+        requests_per_hour: 0
+        requests_per_day: 0
+      
+      api_keys: []
+    
+    third_party:
+      slack:
+        enabled: false
+        workspace: ""
+        user_id: ""
+        permissions: []
+      
+      github:
+        enabled: false
+        username: ""
+        access_token: ""
+        permissions: []
+
+  monitoring:
+    activity_tracking:
+      enabled: true
+      track_page_views: true
+      track_feature_usage: true
+      track_performance_metrics: false
+      
+      retention_period: 90 # days
+    
+    performance_metrics:
+      - metric: login_frequency
+        current_value: 0.8 # per day
+        target_value: 1.0
+      
+      - metric: report_usage
+        current_value: 5.0 # per week
+        target_value: 10.0
+    
+    health_indicators:
+      overall_health: good
+      last_activity: "2024-01-16T11:30:00Z"
+      session_count: 23
+      average_session_duration: 1800 # seconds
+      
+      alerts:
+        - type: unusual_activity
+          threshold: 3 # standard deviations
+          enabled: true
+        
+        - type: failed_login_attempts
+          threshold: 5
+          enabled: true

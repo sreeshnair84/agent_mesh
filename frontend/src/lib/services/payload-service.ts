@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api-client';
+import { apiClient, API_ENDPOINTS } from '@/lib/api-client';
 
 export interface PayloadField {
   name: string;
@@ -32,7 +32,7 @@ export interface ValidationResult {
 export const payloadService = {
   // Get agent payload specifications
   async getAgentPayload(agentId: string): Promise<AgentPayload> {
-    const response = await apiClient.get(`/agents/${agentId}/payload`);
+    const response = await apiClient.get<AgentPayload>(API_ENDPOINTS.AGENTS.PAYLOAD(agentId));
     return response.data;
   },
 
@@ -44,7 +44,7 @@ export const payloadService = {
       output_payload?: PayloadSchema;
     }
   ): Promise<void> {
-    await apiClient.put(`/agents/${agentId}/payload`, payload);
+    await apiClient.put<void>(API_ENDPOINTS.AGENTS.PAYLOAD(agentId), payload);
   },
 
   // Validate data against payload schema
@@ -53,7 +53,7 @@ export const payloadService = {
     payloadData: any,
     payloadType: 'input' | 'output'
   ): Promise<ValidationResult> {
-    const response = await apiClient.post(`/agents/${agentId}/payload/validate`, {
+    const response = await apiClient.post<ValidationResult>(`/agents/${agentId}/payload/validate`, {
       payload_data: payloadData,
       payload_type: payloadType
     });
@@ -65,7 +65,10 @@ export const payloadService = {
     input_examples: any[];
     output_examples: any[];
   }> {
-    const response = await apiClient.get(`/agents/${agentId}/payload/examples`);
+    const response = await apiClient.get<{
+      input_examples: any[];
+      output_examples: any[];
+    }>(`/agents/${agentId}/payload/examples`);
     return response.data;
   },
 

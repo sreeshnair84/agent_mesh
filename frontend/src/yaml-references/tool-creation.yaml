@@ -1,0 +1,709 @@
+# Tool Creation Reference
+# This file provides examples for creating tools in Agent Mesh
+
+# Basic API Tool Configuration
+apiVersion: v1
+kind: Tool
+metadata:
+  name: web-search-tool
+  display_name: Web Search Tool
+  description: HTTP API tool for web search functionality
+  category: web_services
+  version: "1.0.0"
+  tags:
+    - api
+    - search
+    - web
+    - http
+
+# Tool Specification
+spec:
+  # Tool Type and Configuration
+  type: api
+  
+  # API Configuration
+  api:
+    endpoint: "https://api.serpapi.com/search"
+    method: POST
+    headers:
+      Content-Type: application/json
+      User-Agent: "AgentMesh/1.0"
+    
+    timeout: 30 # seconds
+    retries: 3
+    retry_delay: 1 # seconds
+
+  # Authentication Configuration
+  authentication:
+    type: api_key
+    config:
+      header_name: "X-API-Key"
+      prefix: ""
+      location: header # Options: header, query, body
+
+  # Input/Output Schema
+  input_schema:
+    type: object
+    properties:
+      q:
+        type: string
+        description: Search query
+        required: true
+      
+      num:
+        type: integer
+        description: Number of results
+        default: 10
+        minimum: 1
+        maximum: 50
+      
+      hl:
+        type: string
+        description: Language
+        default: en
+        enum: [en, es, fr, de, it, pt, ja, zh]
+      
+      safe:
+        type: string
+        description: Safe search
+        default: active
+        enum: [active, off]
+
+  output_schema:
+    type: object
+    properties:
+      search_metadata:
+        type: object
+        properties:
+          id: { type: string }
+          status: { type: string }
+          json_endpoint: { type: string }
+          created_at: { type: string }
+          processed_at: { type: string }
+          google_url: { type: string }
+          raw_html_file: { type: string }
+          total_time_taken: { type: number }
+      
+      search_parameters:
+        type: object
+        properties:
+          engine: { type: string }
+          q: { type: string }
+          google_domain: { type: string }
+          hl: { type: string }
+          gl: { type: string }
+          device: { type: string }
+      
+      organic_results:
+        type: array
+        items:
+          type: object
+          properties:
+            position: { type: integer }
+            title: { type: string }
+            link: { type: string }
+            redirect_link: { type: string }
+            displayed_link: { type: string }
+            snippet: { type: string }
+            snippet_highlighted_words: { type: array }
+            sitelinks: { type: object }
+            rich_snippet: { type: object }
+            about_this_result: { type: object }
+
+  # Rate Limiting
+  rate_limits:
+    requests_per_minute: 60
+    requests_per_hour: 1000
+    concurrent_requests: 5
+
+  # Error Handling
+  error_handling:
+    - status_code: 429
+      action: retry_with_exponential_backoff
+      max_retries: 5
+      base_delay: 2
+    
+    - status_code: 500
+      action: retry_with_fixed_delay
+      max_retries: 3
+      delay: 5
+    
+    - status_code: 401
+      action: fail_with_auth_error
+      message: "Invalid API key"
+    
+    - status_code: 404
+      action: fail_with_error
+      message: "Endpoint not found"
+
+  # Health Check
+  health_check:
+    endpoint: "https://api.serpapi.com/health"
+    method: GET
+    interval: 60 # seconds
+    timeout: 5 # seconds
+    expected_status: 200
+
+  # Monitoring
+  monitoring:
+    metrics:
+      - response_time
+      - success_rate
+      - error_rate
+      - throughput
+    
+    alerts:
+      - name: high_error_rate
+        condition: error_rate > 0.05
+        severity: warning
+      
+      - name: slow_response
+        condition: avg_response_time > 10000
+        severity: critical
+
+---
+# Database Tool Configuration
+apiVersion: v1
+kind: Tool
+metadata:
+  name: postgres-query-tool
+  display_name: PostgreSQL Query Tool
+  description: Tool for executing PostgreSQL database queries
+  category: database
+  version: "1.0.0"
+  tags:
+    - database
+    - sql
+    - postgresql
+    - query
+
+spec:
+  type: database
+  
+  # Database Configuration
+  database:
+    type: postgresql
+    connection:
+      host: "${DB_HOST}"
+      port: 5432
+      database: "${DB_NAME}"
+      schema: app
+      ssl_mode: require
+    
+    pool_settings:
+      min_connections: 1
+      max_connections: 10
+      idle_timeout: 300 # seconds
+      max_lifetime: 3600 # seconds
+
+  # Authentication
+  authentication:
+    type: database_credentials
+    config:
+      username: "${DB_USERNAME}"
+      password: "${DB_PASSWORD}"
+
+  # Input Schema
+  input_schema:
+    type: object
+    properties:
+      query:
+        type: string
+        description: SQL query to execute
+        required: true
+      
+      parameters:
+        type: array
+        description: Query parameters
+        items:
+          type: [string, number, boolean]
+      
+      timeout:
+        type: integer
+        description: Query timeout in seconds
+        default: 30
+        minimum: 1
+        maximum: 300
+      
+      limit:
+        type: integer
+        description: Maximum number of rows to return
+        default: 1000
+        minimum: 1
+        maximum: 10000
+
+  # Output Schema
+  output_schema:
+    type: object
+    properties:
+      rows:
+        type: array
+        description: Query result rows
+        items:
+          type: object
+      
+      row_count:
+        type: integer
+        description: Number of rows returned
+      
+      execution_time:
+        type: number
+        description: Query execution time in milliseconds
+      
+      columns:
+        type: array
+        description: Column metadata
+        items:
+          type: object
+          properties:
+            name: { type: string }
+            type: { type: string }
+            nullable: { type: boolean }
+      
+      query_plan:
+        type: object
+        description: Query execution plan (if explain was used)
+
+  # Security Configuration
+  security:
+    allowed_operations:
+      - SELECT
+      - INSERT
+      - UPDATE
+      - DELETE
+    
+    blocked_operations:
+      - DROP
+      - TRUNCATE
+      - ALTER
+      - CREATE
+    
+    table_access:
+      allowed_tables:
+        - users
+        - agents
+        - workflows
+        - tools
+        - skills
+      
+      blocked_tables:
+        - pg_user
+        - pg_shadow
+        - information_schema.*
+    
+    query_validation:
+      max_query_length: 10000
+      prevent_sql_injection: true
+      require_parameterized_queries: true
+
+  # Performance Configuration
+  performance:
+    query_timeout: 30 # seconds
+    max_rows: 10000
+    connection_timeout: 5 # seconds
+    statement_timeout: 30 # seconds
+
+  # Error Handling
+  error_handling:
+    connection_error:
+      action: retry_with_backoff
+      max_retries: 3
+      backoff_multiplier: 2
+    
+    query_timeout:
+      action: fail_with_timeout_error
+      message: "Query execution timed out"
+    
+    syntax_error:
+      action: fail_with_syntax_error
+      include_error_details: true
+    
+    permission_error:
+      action: fail_with_permission_error
+      message: "Insufficient permissions for this operation"
+
+---
+# Function Tool Configuration
+apiVersion: v1
+kind: Tool
+metadata:
+  name: email-sender-tool
+  display_name: Email Sender Tool
+  description: Tool for sending emails via SMTP
+  category: communication
+  version: "1.0.0"
+  tags:
+    - email
+    - smtp
+    - communication
+    - notification
+
+spec:
+  type: function
+  
+  # Function Configuration
+  function:
+    runtime: python3.9
+    handler: email_sender.send_email
+    timeout: 30 # seconds
+    memory: 256 # MB
+    
+    environment:
+      SMTP_HOST: "${SMTP_HOST}"
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USERNAME: "${SMTP_USERNAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      SMTP_USE_TLS: "true"
+
+  # Dependencies
+  dependencies:
+    - name: smtplib
+      version: latest
+    - name: email
+      version: latest
+    - name: jinja2
+      version: "3.1.2"
+
+  # Input Schema
+  input_schema:
+    type: object
+    properties:
+      to:
+        type: array
+        description: Recipient email addresses
+        items:
+          type: string
+          format: email
+        required: true
+      
+      cc:
+        type: array
+        description: CC recipients
+        items:
+          type: string
+          format: email
+      
+      bcc:
+        type: array
+        description: BCC recipients
+        items:
+          type: string
+          format: email
+      
+      subject:
+        type: string
+        description: Email subject
+        required: true
+        max_length: 200
+      
+      body:
+        type: string
+        description: Email body
+        required: true
+        max_length: 50000
+      
+      html:
+        type: boolean
+        description: Whether body is HTML
+        default: false
+      
+      attachments:
+        type: array
+        description: File attachments
+        items:
+          type: object
+          properties:
+            filename: { type: string }
+            content_type: { type: string }
+            data: { type: string, format: base64 }
+      
+      template:
+        type: string
+        description: Email template name
+      
+      template_vars:
+        type: object
+        description: Template variables
+      
+      priority:
+        type: string
+        description: Email priority
+        enum: [low, normal, high]
+        default: normal
+
+  # Output Schema
+  output_schema:
+    type: object
+    properties:
+      message_id:
+        type: string
+        description: Unique message identifier
+      
+      status:
+        type: string
+        description: Send status
+        enum: [sent, failed, queued]
+      
+      timestamp:
+        type: string
+        format: date-time
+        description: Send timestamp
+      
+      recipients:
+        type: array
+        description: Successfully sent recipients
+        items:
+          type: string
+      
+      failed_recipients:
+        type: array
+        description: Failed recipients
+        items:
+          type: object
+          properties:
+            email: { type: string }
+            error: { type: string }
+      
+      error_message:
+        type: string
+        description: Error message if failed
+
+  # Security Configuration
+  security:
+    encryption:
+      in_transit: true
+      at_rest: false
+    
+    validation:
+      email_format: true
+      domain_validation: true
+      spam_check: true
+    
+    limits:
+      max_recipients: 100
+      max_attachments: 10
+      max_attachment_size: 25MB
+      max_body_size: 50KB
+
+  # Rate Limiting
+  rate_limits:
+    emails_per_minute: 30
+    emails_per_hour: 500
+    emails_per_day: 2000
+
+  # Error Handling
+  error_handling:
+    smtp_connection_error:
+      action: retry_with_backoff
+      max_retries: 3
+      backoff_multiplier: 2
+    
+    authentication_error:
+      action: fail_with_auth_error
+      message: "SMTP authentication failed"
+    
+    recipient_error:
+      action: partial_success
+      continue_with_valid_recipients: true
+    
+    rate_limit_exceeded:
+      action: queue_for_later
+      retry_after: 60 # seconds
+
+---
+# File Processing Tool Configuration
+apiVersion: v1
+kind: Tool
+metadata:
+  name: document-processor-tool
+  display_name: Document Processor Tool
+  description: Tool for processing various document formats
+  category: file_management
+  version: "1.0.0"
+  tags:
+    - file
+    - document
+    - processing
+    - conversion
+
+spec:
+  type: file
+  
+  # File Configuration
+  file:
+    supported_formats:
+      - pdf
+      - docx
+      - txt
+      - rtf
+      - odt
+      - html
+      - markdown
+    
+    max_file_size: 50MB
+    processing_timeout: 120 # seconds
+    
+    storage:
+      type: local
+      path: /tmp/document-processing
+      cleanup_after: 3600 # seconds
+
+  # Input Schema
+  input_schema:
+    type: object
+    properties:
+      file_data:
+        type: string
+        format: base64
+        description: Base64 encoded file data
+        required: true
+      
+      filename:
+        type: string
+        description: Original filename
+        required: true
+      
+      operation:
+        type: string
+        description: Processing operation
+        enum: [extract_text, convert_to_pdf, extract_images, get_metadata]
+        required: true
+      
+      options:
+        type: object
+        description: Operation-specific options
+        properties:
+          output_format:
+            type: string
+            enum: [text, html, markdown, json]
+            default: text
+          
+          preserve_formatting:
+            type: boolean
+            default: true
+          
+          extract_tables:
+            type: boolean
+            default: false
+          
+          ocr_enabled:
+            type: boolean
+            default: false
+          
+          language:
+            type: string
+            default: en
+
+  # Output Schema
+  output_schema:
+    type: object
+    properties:
+      status:
+        type: string
+        enum: [success, failed, partial]
+      
+      result:
+        type: object
+        properties:
+          text_content:
+            type: string
+            description: Extracted text content
+          
+          images:
+            type: array
+            description: Extracted images
+            items:
+              type: object
+              properties:
+                name: { type: string }
+                format: { type: string }
+                data: { type: string, format: base64 }
+          
+          metadata:
+            type: object
+            properties:
+              title: { type: string }
+              author: { type: string }
+              creation_date: { type: string }
+              modification_date: { type: string }
+              page_count: { type: integer }
+              word_count: { type: integer }
+          
+          tables:
+            type: array
+            description: Extracted tables
+            items:
+              type: object
+              properties:
+                headers: { type: array }
+                rows: { type: array }
+          
+          converted_file:
+            type: string
+            format: base64
+            description: Converted file data
+      
+      processing_time:
+        type: number
+        description: Processing time in seconds
+      
+      warnings:
+        type: array
+        description: Processing warnings
+        items:
+          type: string
+      
+      error_message:
+        type: string
+        description: Error message if failed
+
+  # Security Configuration
+  security:
+    virus_scanning: true
+    content_validation: true
+    
+    allowed_mime_types:
+      - application/pdf
+      - application/msword
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - text/plain
+      - text/rtf
+      - application/vnd.oasis.opendocument.text
+      - text/html
+      - text/markdown
+    
+    quarantine_suspicious_files: true
+    
+    sandboxing:
+      enabled: true
+      timeout: 60 # seconds
+      memory_limit: 512MB
+
+  # Performance Configuration
+  performance:
+    concurrent_processing: 3
+    queue_size: 10
+    processing_timeout: 120 # seconds
+    memory_limit: 1GB
+
+  # Error Handling
+  error_handling:
+    file_too_large:
+      action: fail_with_error
+      message: "File size exceeds maximum limit"
+    
+    unsupported_format:
+      action: fail_with_error
+      message: "Unsupported file format"
+    
+    processing_timeout:
+      action: fail_with_timeout_error
+      message: "Document processing timed out"
+    
+    corrupted_file:
+      action: fail_with_error
+      message: "File appears to be corrupted"
+    
+    virus_detected:
+      action: quarantine_and_fail
+      message: "Potentially malicious file detected"

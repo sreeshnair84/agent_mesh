@@ -1,0 +1,175 @@
+# Agent Template Configuration
+# This is a comprehensive template for creating an agent in the Agent Mesh system
+# Follow the structure and provide values based on your specific requirements
+
+# Basic agent information
+agent:
+  name: "example-agent" # Required: Lowercase alphanumeric with hyphens/underscores
+  display_name: "Example Agent" # Required: Human-readable name
+  description: "This agent performs example tasks and demonstrates the agent template." # Required
+  type: "lowcode" # Required: 'lowcode' or 'custom'
+  template: "basic-assistant" # Optional: Template name if using a pre-defined template
+  is_public: true # Optional: Whether this agent is publicly accessible
+  tags: 
+    - "example"
+    - "template"
+    - "documentation"
+
+# Model configuration
+model:
+  llm_model: "gpt-4" # Required: LLM model to use
+  embedding_model: "text-embedding-ada-002" # Optional: Embedding model for vector search
+  model_id: "default-model" # Optional: Reference to a model in the system
+
+# Prompts and system instructions
+prompts:
+  system_prompt: | 
+    You are an example agent that demonstrates the agent template.
+    Follow these guidelines:
+    1. Be helpful and informative
+    2. Provide accurate information
+    3. Ask clarifying questions when needed
+  
+  # Additional prompt templates for specific scenarios
+  conversation_start: "Hello! I'm {{agent.display_name}}. How can I help you today?"
+  error_handling: "I apologize, but I encountered an issue: {{error}}. Let me try to help in a different way."
+
+# Capabilities and tools
+capabilities:
+  - name: "basic_conversation"
+    description: "Can engage in general conversation"
+  - name: "knowledge_retrieval"
+    description: "Can retrieve knowledge from documents"
+  
+tools:
+  - name: "web_search"
+    description: "Search the web for information"
+    config:
+      provider: "bing"
+      result_count: 5
+  - name: "vector_store"
+    description: "Search vector database for relevant information"
+    config:
+      collection_name: "agent_knowledge"
+      similarity_threshold: 0.75
+
+# Input/Output Payload Specifications
+input_payload:
+  name: "agent_input"
+  description: "Input schema for the agent"
+  type: "object"
+  properties:
+    query:
+      name: "query"
+      type: "string"
+      description: "User query or request"
+      required: true
+    context:
+      name: "context"
+      type: "object"
+      description: "Additional context for the request"
+      required: false
+  examples:
+    - query: "What is the weather today?"
+      context:
+        location: "New York"
+        units: "celsius"
+
+output_payload:
+  name: "agent_output"
+  description: "Output schema for the agent"
+  type: "object"
+  properties:
+    response:
+      name: "response"
+      type: "string"
+      description: "Agent's response to the user"
+      required: true
+    sources:
+      name: "sources"
+      type: "array"
+      description: "Sources of information used"
+      required: false
+  examples:
+    - response: "The weather in New York today is sunny with a high of 25°C."
+      sources:
+        - name: "Weather API"
+          url: "https://example.com/weather/newyork"
+
+# Constraints and limitations
+constraints:
+  - name: "rate_limit"
+    description: "Rate limiting for API calls"
+    config:
+      max_requests_per_minute: 60
+  - name: "content_filter"
+    description: "Filter inappropriate content"
+    config:
+      sensitivity_level: "medium"
+      filter_categories: ["profanity", "sensitive_topics"]
+
+# Skills to associate with this agent
+skills:
+  - "general_knowledge"
+  - "information_retrieval"
+  - "context_awareness"
+
+# Deployment configuration
+deployment:
+  replicas: 1
+  resources:
+    memory: "512Mi"
+    cpu: "0.5"
+  environment:
+    DEBUG: "false"
+    LOG_LEVEL: "info"
+  ports:
+    - 8080
+  health_check:
+    path: "/health"
+    initial_delay_seconds: 10
+    period_seconds: 30
+  auto_scaling:
+    min_replicas: 1
+    max_replicas: 5
+    target_cpu_utilization: 70
+
+# Memory and state management
+memory:
+  type: "conversation_history"
+  max_messages: 20
+  persistence: "session"
+  ttl_seconds: 3600
+
+# Vector store configuration
+vector_storage:
+  enabled: true
+  collection_name: "agent_knowledge"
+  dimensions: 1536
+  similarity_metric: "cosine"
+  index_strategy: "hnsw"
+
+# Rate limiting and quota
+rate_limits:
+  max_requests_per_day: 1000
+  max_tokens_per_request: 4000
+  max_tokens_per_day: 100000
+
+# Monitoring and observability
+monitoring:
+  metrics:
+    - name: "response_time"
+      type: "histogram"
+      description: "Time taken to respond to requests"
+    - name: "token_usage"
+      type: "counter"
+      description: "Number of tokens used"
+  logging:
+    level: "info"
+    include_prompt: false
+    include_response: true
+
+# Version control and change tracking
+versioning:
+  version: "1.0.0"
+  changelog: "Initial version of example agent"

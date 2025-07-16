@@ -7,28 +7,27 @@ import uuid
 import enum
 
 from app.core.database import Base
+from app.models.master_data import agent_tools
 
 
 class ToolType(enum.Enum):
-    API = "api"
     FUNCTION = "function"
-    WEBHOOK = "webhook"
-    DATABASE = "database"
-    FILE_SYSTEM = "file_system"
-    EXTERNAL_SERVICE = "external_service"
-    CUSTOM = "custom"
+    API = "api"
+    MCP = "mcp"
+    BUILTIN = "builtin"
 
 
-class ToolStatus(enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    DEPRECATED = "deprecated"
-    MAINTENANCE = "maintenance"
+class ExecutionStatus(enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class Tool(Base):
     __tablename__ = "tools"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
@@ -36,60 +35,54 @@ class Tool(Base):
     description = Column(Text)
     
     # Tool classification
-    tool_type = Column(Enum(ToolType), nullable=False)
+    type = Column(Enum(ToolType, name="tool_type", schema="app"), nullable=False)
     category = Column(String(100), nullable=True)
-    tags = Column(JSON, default=[])
     
     # Tool configuration
-    config = Column(JSON, nullable=False)
-    tool_schema = Column(JSON, nullable=False)  # OpenAPI/JSON schema for the tool
+    config = Column(JSON, default={})
+    schema_input = Column(JSON, nullable=True)
+    schema_output = Column(JSON, nullable=True)
     
     # Tool implementation
-    implementation = Column(Text, nullable=True)  # Code or configuration
     endpoint_url = Column(String(500), nullable=True)
-    
-    # Authentication and security
-    auth_type = Column(String(50), nullable=True)
-    auth_config = Column(JSON, default={})
+    authentication = Column(JSON, default={})
+    rate_limits = Column(JSON, default={})
+    timeout_seconds = Column(Integer, default=30)
+    retries = Column(Integer, default=3)
     
     # Status and metadata
-    status = Column(Enum(ToolStatus), nullable=False, default=ToolStatus.ACTIVE)
-    version = Column(String(50), default="1.0.0")
+    version = Column(String(20), default="1.0.0")
+    is_active = Column(Boolean, default=True)
     
     # Ownership
-    created_by = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.users.id"), nullable=False)
-    organization_id = Column(UUID(as_uuid=True), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("app.users.id"), nullable=True)
     
     # Timing
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Usage statistics
-    total_invocations = Column(Integer, default=0)
-    successful_invocations = Column(Integer, default=0)
-    failed_invocations = Column(Integer, default=0)
-    
     # Relationships
     creator = relationship("User", back_populates="tools")
     executions = relationship("ToolExecution", back_populates="tool")
+    agents = relationship("Agent", secondary=agent_tools, back_populates="tools_assoc")
     
     def __repr__(self):
-        return f"<Tool(id={self.id}, name='{self.name}', type='{self.tool_type}')>"
+        return f"<Tool(id={self.id}, name='{self.name}', type='{self.type}')>"
 
 
 class ToolExecution(Base):
     __tablename__ = "tool_executions"
-    __table_args__ = {"schema": "agent_mesh"}
+    __table_args__ = {"schema": "app"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tool_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.tools.id"), nullable=False)
+    tool_id = Column(UUID(as_uuid=True), ForeignKey("app.tools.id"), nullable=False)
     
     # Execution context
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.agents.id"), nullable=True)
-    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("agent_mesh.workflow_executions.id"), nullable=True)
+    agent_id = Column(UUID(as_uuid=True), ForeignKey("app.agents.id"), nullable=True)
+    workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("app.workflow_executions.id"), nullable=True)
     
     # Execution details
-    status = Column(String(50), nullable=False, default="pending")
+    status = Column(Enum(ExecutionStatus, name="execution_status", schema="app"), nullable=False, default=ExecutionStatus.PENDING)
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
     

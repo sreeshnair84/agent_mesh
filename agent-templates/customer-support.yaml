@@ -1,0 +1,112 @@
+# Basic Assistant Agent Template
+# A simplified template for creating a basic assistant agent
+
+# Basic agent information
+agent:
+  name: "customer-support-assistant" 
+  display_name: "Customer Support Assistant"
+  description: "A specialized assistant for handling customer inquiries and providing product support."
+  type: "lowcode"
+  is_public: true
+  tags: 
+    - "support"
+    - "customer-service"
+    - "help-desk"
+
+# Model configuration
+model:
+  llm_model: "gpt-4"
+  embedding_model: "text-embedding-ada-002"
+
+# Prompt configuration
+prompts:
+  system_prompt: |
+    You are a customer support assistant for a technology company.
+    Follow these guidelines:
+    1. Be courteous and professional at all times
+    2. Ask clarifying questions when customer issues are unclear
+    3. Provide step-by-step troubleshooting instructions when applicable
+    4. Escalate complex issues to human support when necessary
+    5. Maintain a helpful and solution-oriented approach
+    
+# Capabilities and tools
+capabilities:
+  - name: "support_conversation"
+    description: "Handle customer support inquiries"
+  - name: "troubleshooting"
+    description: "Provide troubleshooting guidance"
+  - name: "knowledge_retrieval"
+    description: "Access product knowledge base"
+
+tools:
+  - name: "knowledge_base"
+    description: "Search product documentation and FAQs"
+    config:
+      collections: ["product_docs", "faqs", "troubleshooting_guides"]
+  - name: "ticket_system"
+    description: "Create and check status of support tickets"
+    config:
+      allowed_operations: ["create", "check_status"]
+  - name: "customer_lookup"
+    description: "Look up customer information"
+    config:
+      fields: ["name", "email", "account_status", "purchased_products"]
+
+# Input/Output specifications
+input_payload:
+  name: "support_request"
+  properties:
+    query:
+      type: "string"
+      description: "Customer's question or issue"
+      required: true
+    customer_id:
+      type: "string"
+      description: "Customer identifier"
+      required: false
+    product_info:
+      type: "object"
+      description: "Information about the product in question"
+      required: false
+
+output_payload:
+  name: "support_response"
+  properties:
+    response:
+      type: "string"
+      description: "Assistant's response to the customer"
+      required: true
+    recommended_actions:
+      type: "array"
+      description: "Recommended next steps for the customer"
+      required: false
+    escalation_needed:
+      type: "boolean"
+      description: "Whether the issue needs human agent escalation"
+      required: false
+    
+# Deployment configuration
+deployment:
+  replicas: 2
+  health_check:
+    path: "/health"
+  auto_scaling:
+    min_replicas: 2
+    max_replicas: 10
+    target_cpu_utilization: 70
+
+# Memory configuration
+memory:
+  type: "conversation_history"
+  max_messages: 20
+  ttl_seconds: 7200  # 2 hours
+
+# Monitoring
+monitoring:
+  metrics:
+    - name: "response_time"
+      description: "Time to respond to customer inquiries"
+    - name: "escalation_rate"
+      description: "Rate of issues escalated to human agents"
+    - name: "customer_satisfaction"
+      description: "Customer satisfaction rating after interactions"

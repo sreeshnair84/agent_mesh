@@ -28,8 +28,6 @@ from app.core.exceptions import setup_exception_handlers
 from app.core.middleware import setup_middleware
 from app.api.v1.api import api_router
 from app.services.metrics import MetricsService
-from app.services.tracing import TracingService
-from app.services.alerting import AlertingService
 
 # Configure structured logging
 structlog.configure(
@@ -65,27 +63,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     logger.info("Starting Agent Mesh Observability Service")
     
-    # Initialize tracing
-    if settings.TRACING_ENABLED:
-        resource = Resource.create({"service.name": "agent-mesh-observability"})
-        trace.set_tracer_provider(TracerProvider(resource=resource))
-        
-        if settings.JAEGER_ENDPOINT:
-            jaeger_exporter = JaegerExporter(
-                agent_host_name=settings.JAEGER_HOST,
-                agent_port=settings.JAEGER_PORT,
-            )
-            span_processor = BatchSpanProcessor(jaeger_exporter)
-            trace.get_tracer_provider().add_span_processor(span_processor)
+    # Initialize tracing (disabled for now)
+    pass
     
     # Initialize services
     app.state.metrics_service = MetricsService()
-    app.state.tracing_service = TracingService()
-    app.state.alerting_service = AlertingService()
     
     # Start background tasks
     asyncio.create_task(app.state.metrics_service.start_collection())
-    asyncio.create_task(app.state.alerting_service.start_monitoring())
     
     logger.info("Observability service started successfully")
     
@@ -94,7 +79,6 @@ async def lifespan(app: FastAPI):
     # Cleanup
     logger.info("Shutting down Observability service")
     await app.state.metrics_service.stop_collection()
-    await app.state.alerting_service.stop_monitoring()
 
 
 # Create FastAPI app

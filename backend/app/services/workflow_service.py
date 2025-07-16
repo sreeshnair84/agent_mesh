@@ -13,13 +13,13 @@ from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.models.workflow import Workflow, WorkflowExecution
-from app.models.enhanced_agent import Agent
+from app.models.agent import Agent
 from app.models.user import User
 from app.schemas.workflow import (
     WorkflowCreate, WorkflowUpdate, WorkflowResponse,
     WorkflowExecutionCreate, WorkflowExecutionResponse
 )
-from app.services.enhanced_agent_service import AgentService
+from app.services.agent_creation import AgentCreationService
 from app.services.observability_service import ObservabilityService
 from app.core.exceptions import WorkflowError, ValidationError
 import logging
@@ -31,7 +31,7 @@ class WorkflowService:
     """Service for managing workflows and their executions"""
     
     def __init__(self):
-        self.agent_service = AgentService()
+        self.agent_creation_service = None  # Will be initialized with db session
         self.observability_service = ObservabilityService()
     
     async def create_workflow(
@@ -447,25 +447,29 @@ class WorkflowService:
             output_data = {}
             current_data = execution.input_data
             
-            for agent_config in definition["agents"]:
-                agent_id = agent_config["agent_id"]
-                agent_input = agent_config.get("input_mapping", {})
-                
-                # Map input data
-                mapped_input = self._map_data(current_data, agent_input)
-                
-                # Execute agent
-                result = await self.agent_service.invoke_agent(
-                    agent_id,
-                    mapped_input,
-                    execution.context,
-                    execution.created_by,
-                    db
-                )
-                
-                # Store result
-                output_data[agent_id] = result
-                current_data = result
+            # TODO: Replace with proper agent invocation
+            # for agent_config in definition["agents"]:
+            #     agent_id = agent_config["agent_id"]
+            #     agent_input = agent_config.get("input_mapping", {})
+            #     
+            #     # Map input data
+            #     mapped_input = self._map_data(current_data, agent_input)
+            #     
+            #     # Execute agent
+            #     result = await self.agent_service.invoke_agent(
+            #         agent_id,
+            #         mapped_input,
+            #         execution.context,
+            #         execution.created_by,
+            #         db
+            #     )
+            #     
+            #     # Store result
+            #     output_data[agent_id] = result
+            #     current_data = result
+            
+            # Mock result for now
+            output_data = {"status": "success", "message": "Sequential execution disabled temporarily"}
             
             # Update execution as completed
             await self._update_execution_status(

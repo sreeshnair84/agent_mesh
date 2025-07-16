@@ -1,0 +1,25 @@
+# Standard configuration structure
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  
+vector_store:
+  type: chromadb
+  persist_directory: ./data/vectors
+  
+api_gateway:
+  host: 0.0.0.0
+  port: 8000
+  cors_origins: ["http://localhost:3000"]
+  
+authentication:
+  jwt_secret: ${JWT_SECRET}
+  token_expiry: 3600
+
+# Performance Requirements
+# - Agent Registration: < 100ms
+# - Message Routing: < 50ms
+# - Vector Store Queries: < 200ms
+# - API Response Time: < 300ms
+# - Concurrent Connections: 1000+

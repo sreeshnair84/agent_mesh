@@ -2,6 +2,49 @@
 
 This directory contains pre-built agent templates that can be used to quickly create new agents with specific capabilities.
 
+## Primary Template
+
+### Master Template
+- **File**: `agent-template.yaml`
+- **Description**: Comprehensive template with all possible configurations
+- **Use Case**: Reference for creating custom agents with specific requirements
+
+## Usage
+
+To use these templates:
+
+1. Copy the desired template YAML file
+2. Rename it to reflect your agent's purpose
+3. Customize the configuration based on your requirements
+4. Deploy the agent using the Agent Mesh framework
+
+## Template Structure
+
+Each agent template follows a standard structure:
+
+```yaml
+agent:
+  name: "agent-name"
+  display_name: "Human Readable Name"
+  # Other basic information
+  
+model:
+  llm_model: "model-name"
+  # Model configuration
+  
+prompts:
+  system_prompt: "System instructions"
+  # Other prompts
+  
+capabilities:
+  # List of agent capabilities
+  
+tools:
+  # Tools the agent can use
+  
+# Additional sections for deployment, memory, etc.
+```
+
 ## Available Templates
 
 ### 1. Basic Assistant Agent
@@ -19,6 +62,11 @@ This directory contains pre-built agent templates that can be used to quickly cr
 - **Description**: Agent specialized in code review and analysis
 - **Use Case**: Code quality checks, security reviews, best practices
 
+### 4. Customer Support Agent
+- **File**: `customer-support.yaml`
+- **Description**: Specialized agent for handling customer inquiries and support
+- **Use Case**: Customer service, help desk, product support
+
 ### 4. Content Generation Agent
 - **File**: `content-generator.yaml`
 - **Description**: Agent focused on content creation and writing
@@ -28,41 +76,6 @@ This directory contains pre-built agent templates that can be used to quickly cr
 - **File**: `research-agent.yaml`
 - **Description**: Agent specialized in research and information gathering
 - **Use Case**: Market research, academic research, fact-checking
-
-## Template Structure
-
-Each template follows this structure:
-
-```yaml
-name: "Template Name"
-version: "1.0.0"
-description: "Template description"
-category: "category"
-tags: ["tag1", "tag2"]
-capabilities:
-  - capability1
-  - capability2
-tools:
-  - tool1
-  - tool2
-system_prompt: |
-  System prompt for the agent
-default_config:
-  key: value
-schema:
-  type: object
-  properties:
-    config_item:
-      type: string
-      description: "Description"
-```
-
-## Usage
-
-1. Choose a template that matches your use case
-2. Copy the template file to your agent configuration
-3. Customize the configuration as needed
-4. Deploy the agent through the Agent Mesh interface
 
 ## Contributing
 

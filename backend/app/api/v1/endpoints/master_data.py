@@ -11,7 +11,9 @@ from app.core.database import get_db
 from app.api.deps import get_current_user_from_db, get_current_admin_user
 from app.models.user import User
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/master-data",
+    responses={404: {"description": "Not found"}},)
 
 
 @router.get("/llm-providers")

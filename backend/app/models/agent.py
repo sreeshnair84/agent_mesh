@@ -3,13 +3,25 @@ Agent model
 """
 
 from sqlalchemy import Column, String, Boolean, Integer, DateTime, Enum, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import uuid
 import enum
+from pgvector.sqlalchemy import Vector
 
 from app.core.database import Base
+# Import association tables from master_data
+from app.models.master_data import agent_skills, agent_constraints, agent_tools
+
+
+class BaseModel(Base):
+    """Base model with common fields"""
+    __abstract__ = True
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class AgentStatus(str, enum.Enum):
@@ -115,37 +127,64 @@ class AgentTemplate(Base):
         }
 
 
-class Agent(Base):
+class Agent(BaseModel):
     """Agent model"""
     
     __tablename__ = "agents"
     __table_args__ = {"schema": "app"}
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False, index=True)
     display_name = Column(String(255), nullable=False)
     description = Column(Text)
-    status = Column(Enum(AgentStatus), default=AgentStatus.INACTIVE, index=True)
+    status = Column(Enum(AgentStatus, name="agent_status", schema="app"), default=AgentStatus.INACTIVE, index=True)
+    
+    # Categorization
     category_id = Column(UUID(as_uuid=True), ForeignKey("app.agent_categories.id"))
     template_id = Column(UUID(as_uuid=True), ForeignKey("app.agent_templates.id"))
+    type = Column(String(50), nullable=True, index=True)  # 'lowcode' or 'custom'
+    
+    # Model configurations
     model_id = Column(UUID(as_uuid=True), ForeignKey("master.model_configurations.id"))
+    llm_model = Column(String(100), nullable=True)
+    embedding_model = Column(String(100), nullable=True)
+    
+    # Prompt and configuration
     system_prompt = Column(Text)
+    prompt = Column(Text, nullable=True)  # From enhanced model
     configuration = Column(JSONB, default=dict)
+    
+    # Payload specifications
+    input_payload = Column(JSONB, nullable=True)  # Schema and examples for input
+    output_payload = Column(JSONB, nullable=True)  # Schema and examples for output
+    
+    # Features and capabilities
     capabilities = Column(JSONB, default=list)
     tools = Column(JSONB, default=list)
     memory_config = Column(JSONB, default=dict)
     rate_limits = Column(JSONB, default=dict)
     tags = Column(JSONB, default=list)
+    is_public = Column(Boolean, default=True, index=True)  # From enhanced model
+    
+    # Search support
+    search_vector = Column(Vector(1536), nullable=True)  # From enhanced model
+    
+    # Version and deployment
     version = Column(String(20), default="1.0.0")
     deployment_config = Column(JSONB, default=dict)
     health_check_url = Column(String(500))
+    dns = Column(String(500), nullable=True)  # From enhanced model
+    port = Column(Integer, nullable=True)     # From enhanced model
+    auth_token = Column(String(500), nullable=True)  # From enhanced model
+    
+    # Health monitoring
     last_health_check = Column(DateTime(timezone=True))
+    health_status = Column(String(20), default='unknown', index=True)  # From enhanced model
     error_count = Column(Integer, default=0)
     last_error = Column(Text)
     last_error_at = Column(DateTime(timezone=True))
+    
+    # Ownership and usage
     created_by = Column(UUID(as_uuid=True), ForeignKey("app.users.id"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     deployed_at = Column(DateTime(timezone=True))
     last_used_at = Column(DateTime(timezone=True), index=True)
     usage_count = Column(Integer, default=0, index=True)
@@ -153,13 +192,19 @@ class Agent(Base):
     # Relationships
     category = relationship("AgentCategory", back_populates="agents")
     template = relationship("AgentTemplate", back_populates="agents")
-    creator = relationship("User", back_populates="agents")
+    creator = relationship("User", back_populates="agents", foreign_keys=[created_by])
     versions = relationship("AgentVersion", back_populates="agent", cascade="all, delete-orphan")
-    metrics = relationship("Metric", back_populates="agent")
+    metrics = relationship("AgentMetric", back_populates="agent")
+    observability_metrics = relationship("Metric", back_populates="agent")
     log_entries = relationship("LogEntry", back_populates="agent")
     traces = relationship("Trace", back_populates="agent")
     tool_executions = relationship("ToolExecution", back_populates="agent")
     embeddings = relationship("AgentEmbedding", back_populates="agent", cascade="all, delete-orphan")
+    
+    # Enhanced model relationships
+    skills = relationship("Skill", secondary=agent_skills, back_populates="agents")
+    constraints = relationship("Constraint", secondary=agent_constraints, back_populates="agents")
+    tools_assoc = relationship("Tool", secondary=agent_tools, back_populates="agents")
     
     def __repr__(self):
         return f"<Agent(id={self.id}, name={self.name}, status={self.status})>"
@@ -171,20 +216,26 @@ class Agent(Base):
             "name": self.name,
             "display_name": self.display_name,
             "description": self.description,
-            "status": self.status.value,
+            "status": self.status.value if hasattr(self.status, 'value') else self.status,
+            "type": self.type,
             "category_id": str(self.category_id) if self.category_id else None,
             "template_id": str(self.template_id) if self.template_id else None,
             "model_id": str(self.model_id) if self.model_id else None,
             "system_prompt": self.system_prompt,
+            "prompt": self.prompt,
             "configuration": self.configuration,
             "capabilities": self.capabilities,
             "tools": self.tools,
             "memory_config": self.memory_config,
             "rate_limits": self.rate_limits,
             "tags": self.tags,
+            "is_public": self.is_public,
             "version": self.version,
             "deployment_config": self.deployment_config,
             "health_check_url": self.health_check_url,
+            "dns": self.dns,
+            "port": self.port,
+            "health_status": self.health_status,
             "last_health_check": self.last_health_check.isoformat() if self.last_health_check else None,
             "error_count": self.error_count,
             "last_error": self.last_error,
@@ -195,15 +246,17 @@ class Agent(Base):
             "deployed_at": self.deployed_at.isoformat() if self.deployed_at else None,
             "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
             "usage_count": self.usage_count,
+            "input_payload": self.input_payload,
+            "output_payload": self.output_payload,
         }
     
     def is_active(self) -> bool:
         """Check if agent is active"""
-        return self.status == AgentStatus.ACTIVE
+        return self.status == AgentStatus.ACTIVE or self.status == 'active'
     
     def is_healthy(self) -> bool:
         """Check if agent is healthy"""
-        return self.status == AgentStatus.ACTIVE and self.error_count < 5
+        return (self.status == AgentStatus.ACTIVE or self.status == 'active') and self.error_count < 5
     
     def increment_usage(self):
         """Increment usage count"""
@@ -289,12 +342,12 @@ class AgentEmbedding(Base):
     """Agent embeddings model for semantic search"""
     
     __tablename__ = "agent_embeddings"
-    __table_args__ = {"schema": "vectors"}
+    __table_args__ = {"schema": "app"}
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     agent_id = Column(UUID(as_uuid=True), ForeignKey("app.agents.id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
-    embedding = Column(String)  # This would be vector type in production
+    embedding = Column(Vector)  # This would be vector type in production
     embedding_metadata = Column(JSONB, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -315,3 +368,79 @@ class AgentEmbedding(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+# Base Agent Framework
+from abc import ABC, abstractmethod
+from typing import Dict, List
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass
+class AgentCapability:
+    """Agent capability data class"""
+    name: str
+    description: str
+    input_types: List[str]
+    output_types: List[str]
+    confidence_level: float
+
+
+@dataclass
+class AgentMetadata:
+    """Agent metadata data class"""
+    agent_id: str
+    agent_type: str
+    capabilities: List[AgentCapability]
+    status: AgentStatus
+    created_at: datetime
+    performance_metrics: Dict[str, float]
+
+
+class BaseAgent(ABC):
+    """Core interface that all teams must implement"""
+    
+    @abstractmethod
+    async def process_intent(self, intent: Dict, context: Dict) -> Dict:
+        """Process the intent and return a response"""
+        pass
+    
+    @abstractmethod
+    def define_capabilities(self) -> List[AgentCapability]:
+        """Define the capabilities of the agent"""
+        pass
+    
+    @abstractmethod
+    async def get_health_status(self) -> str:
+        """Get the health status of the agent"""
+        pass
+
+
+class MessageBroker(ABC):
+    """Message broker API contract"""
+    
+    @abstractmethod
+    async def register_agent(self, metadata: AgentMetadata) -> bool:
+        """Register an agent with the broker"""
+        pass
+    
+    @abstractmethod
+    async def route_message(self, from_id: str, to_id: str, message: Dict) -> bool:
+        """Route a message from one agent to another"""
+        pass
+    
+    @abstractmethod
+    async def broadcast(self, message: Dict, filter_criteria: Dict = None) -> int:
+        """Broadcast a message to multiple agents"""
+        pass
+    
+    @abstractmethod
+    async def subscribe_to_events(self, agent_id: str, event_types: List[str]):
+        """Subscribe to events of specific types"""
+        pass
+    
+    @abstractmethod
+    async def get_agent_registry(self) -> Dict[str, AgentMetadata]:
+        """Get the registry of all agents"""
+        pass

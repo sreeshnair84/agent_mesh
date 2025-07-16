@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Search, 
   Filter, 
@@ -14,9 +14,14 @@ import {
   Heart,
   Star,
   Users,
-  Activity
+  Activity,
+  Settings,
+  Copy,
+  BarChart3
 } from 'lucide-react'
 import Link from 'next/link'
+import { AgentService } from '@/lib/services/agent-service'
+import { Agent as AgentType } from '@/types'
 
 interface Agent {
   id: string
@@ -83,7 +88,9 @@ const mockAgents: Agent[] = [
 ]
 
 export function AgentMarketplace() {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents)
+  const [agents, setAgents] = useState<AgentType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedType, setSelectedType] = useState<string>('all')
@@ -91,12 +98,31 @@ export function AgentMarketplace() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [sortBy, setSortBy] = useState('created')
 
-  const availableTags = Array.from(new Set(mockAgents.flatMap(agent => agent.tags)))
+  // Load agents from API
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await AgentService.getAgents()
+        setAgents(response.data || [])
+      } catch (err) {
+        setError('Failed to load agents')
+        console.error('Error loading agents:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAgents()
+  }, [])
+
+  const availableTags = Array.from(new Set(agents.flatMap(agent => agent.tags || [])))
 
   const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          agent.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => agent.tags.includes(tag))
+    const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => agent.tags?.includes(tag))
     const matchesType = selectedType === 'all' || agent.type === selectedType
     const matchesStatus = selectedStatus === 'all' || agent.status === selectedStatus
 
@@ -109,6 +135,30 @@ export function AgentMarketplace() {
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     )
+  }
+
+  const handleDeployAgent = async (agentId: string) => {
+    try {
+      await AgentService.deployAgent(agentId)
+      // Refresh agents after deployment
+      const response = await AgentService.getAgents()
+      setAgents(response.data || [])
+    } catch (err) {
+      console.error('Error deploying agent:', err)
+    }
+  }
+
+  const handleDeleteAgent = async (agentId: string) => {
+    if (window.confirm('Are you sure you want to delete this agent?')) {
+      try {
+        await AgentService.deleteAgent(agentId)
+        // Refresh agents after deletion
+        const response = await AgentService.getAgents()
+        setAgents(response.data || [])
+      } catch (err) {
+        console.error('Error deleting agent:', err)
+      }
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -130,7 +180,7 @@ export function AgentMarketplace() {
     }
   }
 
-  const AgentCard = ({ agent }: { agent: Agent }) => (
+  const AgentCard = ({ agent }: { agent: AgentType }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
       <div className="p-6">
         <div className="flex items-start justify-between">
@@ -144,7 +194,7 @@ export function AgentMarketplace() {
             </div>
             <p className="text-gray-600 text-sm mb-3">{agent.description}</p>
             <div className="flex flex-wrap gap-1 mb-3">
-              {agent.tags.map(tag => (
+              {agent.tags?.map(tag => (
                 <span key={tag} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                   {tag}
                 </span>
@@ -171,7 +221,10 @@ export function AgentMarketplace() {
         </div>
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
           <div className="flex space-x-2">
-            <button className="btn-primary flex items-center space-x-1">
+            <button 
+              onClick={() => handleDeployAgent(agent.id)}
+              className="btn-primary flex items-center space-x-1"
+            >
               <Play className="h-4 w-4" />
               <span>Deploy</span>
             </button>
@@ -179,12 +232,25 @@ export function AgentMarketplace() {
               <Eye className="h-4 w-4" />
               <span>View</span>
             </Link>
+            <Link href={`/agents/${agent.id}/edit` as any} className="btn-secondary flex items-center space-x-1">
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </Link>
           </div>
           <div className="flex space-x-2">
             <button className="p-2 text-gray-400 hover:text-gray-600">
-              <Edit className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </button>
-            <button className="p-2 text-gray-400 hover:text-red-600">
+            <button className="p-2 text-gray-400 hover:text-gray-600">
+              <Copy className="h-4 w-4" />
+            </button>
+            <button className="p-2 text-gray-400 hover:text-gray-600">
+              <BarChart3 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => handleDeleteAgent(agent.id)}
+              className="p-2 text-gray-400 hover:text-red-600"
+            >
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
@@ -193,7 +259,7 @@ export function AgentMarketplace() {
     </div>
   )
 
-  const AgentListItem = ({ agent }: { agent: Agent }) => (
+  const AgentListItem = ({ agent }: { agent: AgentType }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4 flex-1">
@@ -220,7 +286,12 @@ export function AgentMarketplace() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <button className="btn-primary">Deploy</button>
+          <button 
+            onClick={() => handleDeployAgent(agent.id)}
+            className="btn-primary"
+          >
+            Deploy
+          </button>
           <Link href={`/agents/${agent.id}` as any} className="btn-secondary">
             View
           </Link>
@@ -228,6 +299,22 @@ export function AgentMarketplace() {
       </div>
     </div>
   )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-gray-600">Loading agents...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

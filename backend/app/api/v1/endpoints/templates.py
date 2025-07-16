@@ -153,7 +153,7 @@ async def get_template_types(
 @router.get("/templates/{template_id}/export")
 async def export_template(
     template_id: str,
-    format: str = Query("yaml", regex="^(yaml|json)$"),
+    format: str = Query("yaml", pattern="^(yaml|json)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_from_db)
 ):
@@ -166,7 +166,7 @@ async def export_template(
 @router.post("/templates/import")
 async def import_template(
     template_data: str,
-    format: str = Query("yaml", regex="^(yaml|json)$"),
+    format: str = Query("yaml", pattern="^(yaml|json)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_from_db)
 ):

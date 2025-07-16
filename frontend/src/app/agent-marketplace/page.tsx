@@ -6,7 +6,8 @@ import { Plus, Search, Filter, Grid, List } from 'lucide-react'
 import Link from 'next/link'
 import { AgentCard } from '@/components/agents/AgentCard'
 import { AgentFilters } from '@/components/agents/AgentFilters'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, API_ENDPOINTS } from '@/lib/api-client'
+import { ClientOnly } from '@/components/ClientOnly'
 
 export default function AgentMarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -16,7 +17,7 @@ export default function AgentMarketplacePage() {
 
   const { data: agentsResponse, isLoading, error } = useQuery({
     queryKey: ['agents', searchQuery, filters],
-    queryFn: () => apiClient.get('/agents', { params: { query: searchQuery, ...filters } }),
+    queryFn: () => apiClient.get(API_ENDPOINTS.AGENTS.BASE, { params: { search: searchQuery, ...filters } }),
     enabled: true,
     retry: 1,
   })
@@ -55,6 +56,7 @@ export default function AgentMarketplacePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            suppressHydrationWarning={true}
           />
         </div>
 
@@ -62,6 +64,7 @@ export default function AgentMarketplacePage() {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            suppressHydrationWarning={true}
           >
             <Filter className="w-4 h-4" />
             <span>Filters</span>
@@ -71,12 +74,14 @@ export default function AgentMarketplacePage() {
             <button
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 ${viewMode === 'grid' ? 'bg-primary-100 text-primary-600' : 'text-gray-600'}`}
+              suppressHydrationWarning={true}
             >
               Grid
             </button>
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-2 ${viewMode === 'list' ? 'bg-primary-100 text-primary-600' : 'text-gray-600'}`}
+              suppressHydrationWarning={true}
             >
               List
             </button>
@@ -94,7 +99,7 @@ export default function AgentMarketplacePage() {
       )}
 
       {/* Agents Grid/List */}
-      {isLoading ? (
+      <ClientOnly fallback={
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-white rounded-lg border p-6 animate-pulse">
@@ -107,22 +112,37 @@ export default function AgentMarketplacePage() {
             </div>
           ))}
         </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-red-600">Error loading agents</p>
-        </div>
-      ) : !agents || agents.length === 0 ? (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No agents found</h3>
-          <p className="text-gray-600">Create your first agent to get started.</p>
-        </div>
-      ) : (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-          {filteredAgents.map((agent: any) => (
-            <AgentCard key={agent.id} agent={agent} viewMode={viewMode} />
-          ))}
-        </div>
-      )}
+      }>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg border p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-full mb-4"></div>
+                <div className="flex space-x-2">
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600">Error loading agents</p>
+          </div>
+        ) : !agents || agents.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No agents found</h3>
+            <p className="text-gray-600">Create your first agent to get started.</p>
+          </div>
+        ) : (
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+            {filteredAgents.map((agent: any) => (
+              <AgentCard key={agent.id} agent={agent} viewMode={viewMode} />
+            ))}
+          </div>
+        )}
+      </ClientOnly>
 
       {filteredAgents.length === 0 && !isLoading && agents && agents.length > 0 && (
         <div className="text-center py-12">

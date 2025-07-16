@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # Metrics settings
     METRICS_ENABLED: bool = True
     METRICS_COLLECTION_INTERVAL: int = 30  # seconds
+    METRICS_BUFFER_SIZE: int = 1000
+    METRICS_FLUSH_INTERVAL: int = 10  # seconds
     
     # Alerting settings
     ALERTING_ENABLED: bool = True
@@ -46,8 +48,27 @@ class Settings(BaseSettings):
     
     # Notification settings
     SLACK_WEBHOOK_URL: Optional[str] = None
-    EMAIL_SMTP_HOST: Optional[str] = None
-    EMAIL_SMTP_PORT: Optional[int] = None
+    
+    # Email settings
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM: Optional[str] = None
+    SMTP_TO: Optional[str] = None
+    SMTP_TLS: bool = True
+    
+    # Webhook settings
+    WEBHOOK_URL: Optional[str] = None
+    
+    # Performance settings
+    MAX_CONCURRENT_REQUESTS: int = 100
+    REQUEST_TIMEOUT: int = 30
+    
+    # Storage settings
+    METRICS_RETENTION_DAYS: int = 30
+    LOGS_RETENTION_DAYS: int = 7
+    ALERTS_RETENTION_DAYS: int = 30
     EMAIL_USERNAME: Optional[str] = None
     EMAIL_PASSWORD: Optional[str] = None
     

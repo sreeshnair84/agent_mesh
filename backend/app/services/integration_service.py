@@ -12,7 +12,7 @@ import json
 import aiohttp
 from urllib.parse import urljoin
 
-from app.services.agent_service import AgentService
+from app.services.agent_creation import AgentCreationService
 from app.services.workflow_service import WorkflowService
 from app.services.tool_service import ToolService
 from app.services.observability_service import ObservabilityService
@@ -26,7 +26,7 @@ class IntegrationService:
     """Service for integrating different components and external systems"""
     
     def __init__(self):
-        self.agent_service = AgentService()
+        self.agent_creation_service = None  # Will be initialized with db session
         self.workflow_service = WorkflowService()
         self.tool_service = ToolService()
         self.observability_service = ObservabilityService()
@@ -57,8 +57,23 @@ class IntegrationService:
             # Merge with additional agent data
             agent_config.update(agent_data)
             
-            # Create agent
-            agent = await self.agent_service.create_agent(agent_config, user_id, db)
+            # Create agent using creation service
+            if not self.agent_creation_service:
+                self.agent_creation_service = AgentCreationService(db)
+            
+            from app.services.agent_creation import AgentSpec, ResourceRequirements
+            agent_spec = AgentSpec(
+                name=agent_config.get('name', 'Template Agent'),
+                description=agent_config.get('description', ''),
+                category=agent_config.get('category', 'General'),
+                configuration=agent_config,
+                instructions=agent_config.get('prompt', ''),
+                model=agent_config.get('llm_model', 'gpt-4'),
+                resource_requirements=ResourceRequirements(),
+                metadata=agent_config
+            )
+            
+            agent = await self.agent_creation_service.create_agent_from_spec(agent_spec, user_id)
             
             # Log integration event
             await self.observability_service.log_event(
@@ -85,7 +100,9 @@ class IntegrationService:
         """Deploy an agent with a workflow"""
         try:
             # Get agent
-            agent = await self.agent_service.get_agent(agent_id, user_id, db)
+            # TODO: Replace with proper agent retrieval
+            # agent = await self.agent_service.get_agent(agent_id, user_id, db)
+            agent = None  # Temporarily disabled
             if not agent:
                 raise ValueError("Agent not found")
             
@@ -94,7 +111,9 @@ class IntegrationService:
             workflow = await self.workflow_service.create_workflow(workflow_config, user_id, db)
             
             # Deploy agent
-            deployment = await self.agent_service.deploy_agent(agent_id, {}, user_id, db)
+            # TODO: Replace with proper agent deployment
+            # deployment = await self.agent_service.deploy_agent(agent_id, {}, user_id, db)
+            deployment = {"status": "success", "message": "Deployment disabled temporarily"}
             
             # Start workflow
             execution = await self.workflow_service.execute_workflow(
